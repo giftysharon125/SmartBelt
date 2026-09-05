@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --steel-bg: #D2D7D9;
+  --steel-dark: #C4CBCE;
+  --steel-card: #EEF1F2;
+  --card-hover: #D8E8E8;
+  --teal-primary: #287F7A;
+  --teal-highlight: #3F9692;
+  --dark-teal: #155E63;
+  --iron-brown: #795548;
+  --rust-copper: #9A5B3D;
+  --graphite: #263238;
+  --steel-text: #56656B;
+  --steel-border: #B4BEC2;
+  --status-healthy: #5F9F4A;
+  --status-warning: #D68A24;
+  --status-critical: #C6534F;
+}
+
+html, body {
+  background-color: #D2D7D9 !important;
+  color: #263238;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Status Card Styling & Hover */
+.status-card {
+  background-color: #EEF1F2;
+  color: #263238;
+  border: 1px solid #B4BEC2;
+  border-radius: 0.75rem;
+  transition: all 0.25s ease;
+}
+
+.status-card:hover {
+  background-color: #D8E8E8;
+  border-color: #287F7A;
+  box-shadow: 0 4px 12px rgba(38, 50, 56, 0.1);
+}
+
+/* Primary Teal / Rust Button Styling & Hover */
+.btn-primary {
+  background-color: #287F7A;
+  color: #EEF1F2;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(40, 127, 122, 0.2);
+}
+
+.btn-primary:hover {
+  background-color: #155E63;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 127, 122, 0.3);
+}
+
+/* Secondary Rust / Copper Button Styling & Hover */
+.btn-copper {
+  background-color: #9A5B3D;
+  color: #EEF1F2;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.25s ease;
+}
+
+.btn-copper:hover {
+  background-color: #795548;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(154, 91, 61, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #C4CBCE;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #287F7A;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #155E63;
+}
+
+/* 3D Flip Card Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.group:hover .group-hover-flip {
+  transform: rotateY(180deg);
+}

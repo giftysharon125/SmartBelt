@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production build outputs
+dist/
+build/
+
+# Environment & local secret files
+.env
+.env.local
+*.env
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ENV/
+
+# PlatformIO & IDEs
+.pio/
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
