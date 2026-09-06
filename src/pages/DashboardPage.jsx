@@ -75,7 +75,7 @@ export const DashboardPage = () => {
       return (
         <div className="flex items-center space-x-2 bg-[#D97706]/15 text-[#D97706] border border-[#D97706]/30 px-3 py-1 rounded-full font-mono font-extrabold text-xs">
           <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] animate-pulse"></span>
-          <span>🟡 DEMO / SIMULATED DATA</span>
+          <span>🟡 SIMULATED VALUES</span>
         </div>
       );
     }
@@ -135,23 +135,21 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Live Key Metrics Snapshot Bar */}
+        {/* Live Key Metrics Snapshot Bar (3 Prototype Sensors) */}
         <div className="flex flex-wrap items-center gap-3 font-mono text-xs border-t md:border-t-0 md:border-l border-[#E2E8F0] pt-3 md:pt-0 md:pl-4">
           <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Temperature</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.temperature} °C</strong>
-          </div>
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Vibration</span>
+            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Vibration (MPU6050)</span>
             <strong className="text-sm text-[#172B3A] font-black">{sensors.vibration} mm/s</strong>
           </div>
           <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">RPM</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.rpm || 1450}</strong>
+            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Pulley Speed (HW-201)</span>
+            <strong className="text-sm text-[#172B3A] font-black">{sensors.rpm || 50} RPM</strong>
           </div>
           <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Current</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.current || 3.8} A</strong>
+            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Belt Alignment (HW-201)</span>
+            <strong className={`text-sm font-black ${sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 5 ? 'text-status-critical' : 'text-status-healthy'}`}>
+              {sensors.alignment || (sensors.tracking > 5 ? 'MISALIGNED' : 'OK')}
+            </strong>
           </div>
         </div>
       </div>
@@ -164,10 +162,10 @@ export const DashboardPage = () => {
           </div>
           <div>
             <span className="font-extrabold text-industrial-dark text-xs uppercase tracking-wider block">
-              LIVE SCENARIO & ANOMALY SIMULATOR
+              LIVE SENSOR SCENARIO TESTER
             </span>
             <span className="text-xs text-industrial-steel">
-              Test how AI & Digital Twin detect early joint damage and sensor deviations in real time.
+              Test how AI & Digital Twin respond to real MPU6050 vibration spikes and HW-201 alignment drift.
             </span>
           </div>
         </div>
@@ -192,7 +190,7 @@ export const DashboardPage = () => {
                 : 'bg-white hover:bg-amber-50 text-status-warning border-status-warning/40'
             }`}
           >
-            ⚡ Misalignment Spike
+            ⚡ Misalignment Drift
           </button>
 
           <button
@@ -203,7 +201,7 @@ export const DashboardPage = () => {
                 : 'bg-white hover:bg-orange-50 text-industrial-rust border-industrial-rust/40'
             }`}
           >
-            🔥 Motor Overheat
+            ⚡ Speed Reduction
           </button>
 
           <button
@@ -214,7 +212,7 @@ export const DashboardPage = () => {
                 : 'bg-white hover:bg-red-50 text-status-critical border-status-critical/40'
             }`}
           >
-            ⚠️ Joint Rupture Risk
+            ⚠️ High Vibration Spike
           </button>
         </div>
       </div>
@@ -309,130 +307,84 @@ export const DashboardPage = () => {
               </div>
               <div className="bg-slate-200/60 p-2 rounded-lg flex justify-between">
                 <span className="text-industrial-steel">Belt Speed:</span>
-                <span className="font-bold font-mono text-industrial-dark">{sensors.speed} m/s</span>
+                <span className="font-bold font-mono text-industrial-dark">{sensors.speed || 3.8} m/s</span>
               </div>
             </div>
           </div>
 
-          {/* Live Sensor Readings Panel */}
+          {/* Live Sensor Readings Panel (3 Prototype Hardware Sensors) */}
           <div className="bg-card-soft border border-steel-border rounded-2xl p-5 shadow-md">
             <div className="flex items-center justify-between mb-4 border-b border-steel-border pb-2">
               <h3 className="font-bold text-sm text-industrial-dark uppercase tracking-wider flex items-center gap-2">
                 <Activity className="w-4 h-4 text-industrial-teal" />
-                LIVE SENSOR READINGS ({dataSourceMode === 'DEMO' ? '🟡 DEMO MODE' : '🟢 REAL ESP32'})
+                LIVE SENSOR READINGS ({dataSourceMode === 'DEMO' ? '🟡 SIMULATED VALUES' : '🟢 REAL ESP32'})
               </h3>
               <span className="text-xs font-bold text-status-healthy bg-status-healthy/10 px-2 py-0.5 rounded border border-status-healthy/30 font-mono">
-                {dataSourceMode === 'DEMO' ? 'SIMULATION STREAM' : `NODE: ${activeDeviceId}`}
+                {dataSourceMode === 'DEMO' ? '3 PROTOTYPE SENSORS' : `NODE: ${activeDeviceId}`}
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              {/* Sensor Item 1: Vibration */}
-              <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
+            <div className="space-y-3">
+              {/* Sensor 1: MPU6050 Vibration Sensor */}
+              <div className="bg-white p-3 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-slate-100 rounded-lg text-industrial-teal">
-                    <Activity className="w-4 h-4" />
+                  <div className="p-2.5 bg-teal-50 text-industrial-teal rounded-xl border border-teal-100">
+                    <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-industrial-dark block">Vibration (Tri-Axial)</span>
-                    <span className="text-[10px] text-industrial-steel">Limit: &lt; 3.0 mm/s</span>
+                    <span className="font-extrabold text-xs text-industrial-dark block">1. Vibration Sensor (MPU6050)</span>
+                    <span className="text-[11px] text-industrial-steel">Tri-Axial Accel & Gyro | Limit: &lt; 3.0 mm/s</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`font-mono font-extrabold text-sm ${sensors.vibration > 4 ? 'text-status-critical' : 'text-industrial-dark'}`}>
+                  <span className={`font-mono font-black text-base ${sensors.vibration > 4 ? 'text-status-critical' : 'text-industrial-dark'}`}>
                     {sensors.vibration} mm/s
                   </span>
                   <span className={`w-2.5 h-2.5 rounded-full inline-block ml-2 ${sensors.vibration > 4 ? 'bg-status-critical animate-ping' : 'bg-status-healthy'}`}></span>
                 </div>
               </div>
 
-              {/* Sensor Item 2: Temperature */}
-              <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
+              {/* Sensor 2: HW-201 Speed Encoder */}
+              <div className="bg-white p-3 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-slate-100 rounded-lg text-industrial-rust">
-                    <Thermometer className="w-4 h-4" />
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                    <Gauge className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-industrial-dark block">Joint & Pulley Temp</span>
-                    <span className="text-[10px] text-industrial-steel">Limit: &lt; 65 °C</span>
+                    <span className="font-extrabold text-xs text-industrial-dark block">2. Pulley Speed Sensor (HW-201 Encoder)</span>
+                    <span className="text-[11px] text-industrial-steel">Reflective IR Pulse Interrupt | Linear: {sensors.speed || 1.57} m/s</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`font-mono font-extrabold text-sm ${sensors.temperature > 70 ? 'text-status-critical' : 'text-industrial-dark'}`}>
-                    {sensors.temperature} °C
+                  <span className="font-mono font-black text-base text-industrial-dark">
+                    {sensors.rpm || 50} <span className="text-xs font-bold text-industrial-steel">RPM</span>
                   </span>
-                  <span className={`w-2.5 h-2.5 rounded-full inline-block ml-2 ${sensors.temperature > 70 ? 'bg-status-critical animate-ping' : 'bg-status-healthy'}`}></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-status-healthy inline-block ml-2"></span>
                 </div>
               </div>
 
-              {/* Sensor Item 3: Belt Tracking / Misalignment */}
-              <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
+              {/* Sensor 3: HW-201 Belt Alignment Sensor */}
+              <div className="bg-white p-3 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-slate-100 rounded-lg text-industrial-teal">
-                    <Radio className="w-4 h-4" />
+                  <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
+                    <Radio className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-industrial-dark block">Tracking (Misalignment)</span>
-                    <span className="text-[10px] text-industrial-steel">Limit: &plusmn; 4.0 mm</span>
+                    <span className="font-extrabold text-xs text-industrial-dark block">3. Belt Alignment Sensor (HW-201 IR)</span>
+                    <span className="text-[11px] text-industrial-steel">Edge Drift Detector | Tracking Offset: &plusmn; {sensors.tracking || 1.2} mm</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`font-mono font-extrabold text-sm ${Math.abs(sensors.tracking) > 5 ? 'text-status-critical' : 'text-industrial-dark'}`}>
-                    {sensors.tracking > 0 ? `+${sensors.tracking}` : sensors.tracking} mm
+                  <span className={`font-mono font-extrabold text-sm px-2 py-0.5 rounded border ${
+                    sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 5
+                      ? 'bg-red-50 text-status-critical border-red-200'
+                      : 'bg-emerald-50 text-status-healthy border-emerald-200'
+                  }`}>
+                    {sensors.alignment || (sensors.tracking > 5 ? 'MISALIGNED' : 'OK')}
                   </span>
-                  <span className={`w-2.5 h-2.5 rounded-full inline-block ml-2 ${Math.abs(sensors.tracking) > 5 ? 'bg-status-critical animate-ping' : 'bg-status-healthy'}`}></span>
-                </div>
-              </div>
-
-              {/* Sensor Item 4: RPM & Current */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-industrial-steel uppercase block">RPM Speed</span>
-                    <span className="font-mono font-black text-xs text-industrial-dark">{sensors.rpm || 1450} RPM</span>
-                  </div>
-                  <Gauge className="w-4 h-4 text-[#159A9C]" />
-                </div>
-
-                <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-industrial-steel uppercase block">Motor Current</span>
-                    <span className="font-mono font-black text-xs text-industrial-dark">{sensors.current || 3.8} A</span>
-                  </div>
-                  <Zap className="w-4 h-4 text-[#D97706]" />
-                </div>
-              </div>
-
-              {/* Sensor Item 5: Ore Load */}
-              <div className="bg-white p-2.5 rounded-xl border border-steel-border flex items-center justify-between hover:bg-card-hover transition-colors">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-slate-100 rounded-lg text-industrial-brown">
-                    <Weight className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-xs text-industrial-dark block">Ore Payload Weight</span>
-                    <span className="text-[10px] text-industrial-steel">Capacity Limit: 100%</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className={`font-mono font-extrabold text-sm ${sensors.load > 110 ? 'text-status-warning' : 'text-industrial-dark'}`}>
-                    {sensors.load}% (4.2 t/min)
-                  </span>
-                  <span className={`w-2.5 h-2.5 rounded-full inline-block ml-2 ${sensors.load > 110 ? 'bg-status-warning' : 'bg-status-healthy'}`}></span>
-                </div>
-              </div>
-
-              {/* Sensor Item 6 & 7: Speed & Tension */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-white p-2 rounded-xl border border-steel-border flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-industrial-steel">Speed:</span>
-                  <span className="font-mono font-bold text-xs text-industrial-dark">{sensors.speed} m/s</span>
-                </div>
-                <div className="bg-white p-2 rounded-xl border border-steel-border flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-industrial-steel">Tension:</span>
-                  <span className={`font-mono font-bold text-xs ${sensors.tension > 170 ? 'text-status-warning' : 'text-industrial-dark'}`}>
-                    {sensors.tension} kN
-                  </span>
+                  <span className={`w-2.5 h-2.5 rounded-full inline-block ml-2 ${
+                    sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 5 ? 'bg-status-critical animate-ping' : 'bg-status-healthy'
+                  }`}></span>
                 </div>
               </div>
             </div>

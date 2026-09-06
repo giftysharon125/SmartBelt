@@ -82,7 +82,7 @@ export const Header = ({ activeTab, setActiveTab }) => {
               title="Simulated demo data loop (No hardware required)"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Demo / Simulation</span>
+              <span>Simulated Values</span>
             </button>
 
             <button
