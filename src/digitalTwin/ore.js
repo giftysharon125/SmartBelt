@@ -3,7 +3,7 @@ import * as BABYLON from '@babylonjs/core';
 /**
  * Iron Ore System
  * Generates a dense, consistent dynamic stream of 3D iron ore rocks resting flush on top of the carrying belt deck.
- * Features realistic hematite/magnetite mineral colors and smooth discharge physics at the head/tail pulley.
+ * Matches exact Digital Twin mineral color palette (#59382E, #795548, #9A5B3D) and central belt channel alignment.
  */
 export class IronOreSystem {
   constructor(scene, options = {}) {
@@ -28,12 +28,12 @@ export class IronOreSystem {
   createOreMaterials() {
     this.oreMaterials = [];
 
-    // Authentic Industrial Iron Ore Palette (Hematite, Magnetite, Raw Taconite)
+    // Natural Conveyor Digital Twin Iron Ore Color Palette (#59382E, #795548, #9A5B3D, #4E2E25)
     const oreColors = [
-      { diffuse: new BABYLON.Color3(0.35, 0.18, 0.15), spec: new BABYLON.Color3(0.20, 0.18, 0.18) }, // Dark Hematite Iron
-      { diffuse: new BABYLON.Color3(0.28, 0.22, 0.20), spec: new BABYLON.Color3(0.25, 0.25, 0.25) }, // Dark Magnetite Grey-Brown
-      { diffuse: new BABYLON.Color3(0.42, 0.20, 0.16), spec: new BABYLON.Color3(0.18, 0.15, 0.14) }, // Rich Earthy Iron Ore
-      { diffuse: new BABYLON.Color3(0.32, 0.16, 0.13), spec: new BABYLON.Color3(0.15, 0.12, 0.12) }  // Deep Raw Taconite Ore
+      { diffuse: new BABYLON.Color3(0.35, 0.22, 0.18), spec: new BABYLON.Color3(0.18, 0.16, 0.15) }, // Classic Iron Ore (#59382E)
+      { diffuse: new BABYLON.Color3(0.47, 0.33, 0.28), spec: new BABYLON.Color3(0.20, 0.18, 0.16) }, // Earthy Ore Brown (#795548)
+      { diffuse: new BABYLON.Color3(0.60, 0.36, 0.24), spec: new BABYLON.Color3(0.22, 0.18, 0.15) }, // Hematite Warm Oxide (#9A5B3D)
+      { diffuse: new BABYLON.Color3(0.31, 0.18, 0.15), spec: new BABYLON.Color3(0.15, 0.14, 0.14) }  // Raw Lump Taconite (#4E2E25)
     ];
 
     oreColors.forEach((c, idx) => {
@@ -48,9 +48,9 @@ export class IronOreSystem {
   createOreBaseMeshes() {
     this.rockPrototypes = [];
 
-    // Create 4 distinct realistic iron ore rock prototypes (size 0.18m to 0.30m)
+    // Create 4 distinct realistic iron ore rock prototypes (size 0.16m to 0.28m)
     for (let i = 0; i < 4; i++) {
-      const size = 0.18 + (i % 3) * 0.06;
+      const size = 0.16 + (i % 3) * 0.05;
       const proto = BABYLON.MeshBuilder.CreatePolyhedron(`oreProto_${i}`, {
         type: i % 4,
         size: size
@@ -70,10 +70,11 @@ export class IronOreSystem {
       const instance = protoObj.mesh.createInstance(`oreInstance_${i}`);
       const size = protoObj.size;
 
-      // Pre-seed 70 active rocks evenly across carrying belt flight (-6.8m to +6.0m) for dense consistent stream
+      // Pre-seed 70 active rocks evenly aligned along central trough channel (-6.8m to +6.0m)
       const isInitialActive = i < 70;
       const initialX = isInitialActive ? -6.8 + (i / 70) * 12.8 : this.loadZoneX;
-      const initialZ = isInitialActive ? (Math.random() - 0.5) * 0.85 : 0;
+      // Central alignment down troughed belt channel (Z: -0.22 to +0.22)
+      const initialZ = isInitialActive ? (Math.random() - 0.5) * 0.44 : 0;
       const initialY = this.beltSurfaceBaseY + (size / 2);
 
       instance.isVisible = isInitialActive;
@@ -113,8 +114,9 @@ export class IronOreSystem {
     inactive.active = true;
     inactive.mesh.isVisible = true;
     inactive.falling = false;
-    inactive.x = this.loadZoneX + (Math.random() - 0.5) * 0.5;
-    inactive.z = (Math.random() - 0.5) * 0.85;
+    inactive.x = this.loadZoneX + (Math.random() - 0.5) * 0.4;
+    // Central alignment down troughed belt channel (Z: -0.22 to +0.22)
+    inactive.z = (Math.random() - 0.5) * 0.44;
     inactive.y = this.beltSurfaceBaseY + (inactive.size / 2);
 
     inactive.vx = -speed * 0.5;
@@ -132,7 +134,7 @@ export class IronOreSystem {
     const activeSpeed = (typeof speed === 'number' && !isNaN(speed) && speed > 0) ? speed : 3.8;
     const activeLoad = (typeof loadPercent === 'number' && !isNaN(loadPercent) && loadPercent > 0) ? loadPercent : 82.0;
 
-    const spawnInterval = Math.max(0.03, 0.22 - (activeLoad / 100) * 0.17);
+    const spawnInterval = Math.max(0.03, 0.20 - (activeLoad / 100) * 0.15);
     this.spawnTimer += dt;
 
     if (this.spawnTimer >= spawnInterval) {
@@ -157,7 +159,7 @@ export class IronOreSystem {
       }
 
       if (!r.falling) {
-        // Move ore continuously along carrying belt deck from right (+X) to left (-X)
+        // Move ore continuously along central carrying belt channel from right (+X) to left (-X)
         r.x -= activeSpeed * dt;
         r.y = this.beltSurfaceBaseY + (r.size / 2);
         r.mesh.position.set(r.x, r.y, r.z);
@@ -186,5 +188,6 @@ export class IronOreSystem {
     }
   }
 }
+
 
 
