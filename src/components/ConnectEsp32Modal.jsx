@@ -34,7 +34,7 @@ export const ConnectEsp32Modal = ({ isOpen, onClose }) => {
     ? `curl -X POST http://localhost:8005/api/devices/${registeredDevice.device_id}/sensor-data \\
   -H "Content-Type: application/json" \\
   -H "X-Device-Token: ${registeredDevice.device_token}" \\
-  -d '{"temperature": 58.2, "vibration": 5.8, "rpm": 1320, "current": 4.5}'`
+  -d '{"vibration": 1.8, "speed": 3.8, "rpm": 120, "tracking": 1.2, "alignment": "OK"}'`
     : '';
 
   const copyToClipboard = (text, type) => {

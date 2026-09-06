@@ -70,6 +70,24 @@ export const Header = ({ activeTab, setActiveTab }) => {
         {/* Right Top Controls */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-[#263238]">
 
+          {/* Small ESP32 Hardware Status Info Button */}
+          <div 
+            onClick={() => setIsConnectModalOpen(true)}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl border font-mono shadow-2xs text-xs font-bold cursor-pointer transition-all ${
+              deviceStatus === 'ONLINE'
+                ? 'bg-[#2E9D59]/10 border-[#2E9D59]/30 text-[#2E9D59] hover:bg-[#2E9D59]/20'
+                : deviceStatus === 'NO_RECENT_DATA'
+                ? 'bg-[#D97706]/10 border-[#D97706]/30 text-[#D97706] hover:bg-[#D97706]/20'
+                : 'bg-[#C6534F]/10 border-[#C6534F]/30 text-[#C6534F] hover:bg-[#C6534F]/20'
+            }`} 
+            title="Click for ESP32 Connection Details"
+          >
+            <span className={`w-2 h-2 rounded-full ${
+              deviceStatus === 'ONLINE' ? 'bg-[#2E9D59] animate-pulse' : deviceStatus === 'NO_RECENT_DATA' ? 'bg-[#D97706]' : 'bg-[#C6534F]'
+            }`}></span>
+            <span>{deviceStatus === 'ONLINE' ? 'ESP32 Online' : deviceStatus === 'NO_RECENT_DATA' ? 'No Recent Data' : 'ESP32 Offline'}</span>
+          </div>
+
           {/* Live Clock & Date */}
           <div className="flex items-center space-x-2 text-[#263238] bg-[#EEF1F2] px-3 py-1.5 rounded-xl border border-[#B4BEC2] font-mono shadow-2xs">
             <Clock className="w-4 h-4 text-[#9A5B3D]" />

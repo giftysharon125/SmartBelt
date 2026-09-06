@@ -3,6 +3,7 @@ import random
 import time
 import os
 import uuid
+import threading
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Header, Depends
@@ -358,29 +359,23 @@ init_mongo_connection()
 
 def run_random_forest_prediction(sensors: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Evaluates sensor payload (simulation or real ESP32) through Random Forest prediction logic.
+    Evaluates sensor payload (simulation or real ESP32) through Random Forest prediction logic
+    for the 3 prototype sensors (MPU6050 Vibration, HW-201 Speed Encoder, HW-201 Belt Alignment).
     """
     vib = sensors.get("vibration", 1.8)
-    temp = sensors.get("temperature", 43.0)
     track = abs(sensors.get("tracking", 1.2))
-    tens = sensors.get("tension", 142.0)
-    load = sensors.get("load", 82.0)
+    rpm = sensors.get("rpm", 50.0)
+    align = sensors.get("alignment", "OK")
 
     health = 96
     if vib > 6.0: health -= 40
     elif vib > 3.0: health -= 18
 
-    if temp > 75: health -= 35
-    elif temp > 60: health -= 16
-
-    if track > 7.0: health -= 35
+    if track > 7.0 or align == "MISALIGNED": health -= 35
     elif track > 4.0: health -= 18
 
-    if tens > 180 or tens < 100: health -= 30
-    elif tens > 165 or tens < 115: health -= 12
-
-    if load > 115: health -= 25
-    elif load > 90: health -= 12
+    if rpm < 30: health -= 30
+    elif rpm < 40: health -= 12
 
     health = max(12, min(99, int(round(health))))
     risk = 100 - health
@@ -390,9 +385,8 @@ def run_random_forest_prediction(sensors: Dict[str, Any]) -> Dict[str, Any]:
 
     primary_driver = "None"
     if vib > 4.0: primary_driver = f"Vibration ({vib} mm/s)"
-    elif temp > 60.0: primary_driver = f"Temperature ({temp} °C)"
-    elif track > 4.0: primary_driver = f"Misalignment ({track} mm)"
-    elif load > 90.0: primary_driver = f"Load Current ({load} %)"
+    elif track > 4.0 or align == "MISALIGNED": primary_driver = f"Misalignment ({track} mm)"
+    elif rpm < 40: primary_driver = f"Pulley Speed ({rpm} RPM)"
 
     return {
         "healthScore": health,
@@ -405,68 +399,192 @@ def run_random_forest_prediction(sensors: Dict[str, Any]) -> Dict[str, Any]:
         "evaluationTimestamp": datetime.now().isoformat()
     }
 
-# Dynamic Demo Value Generator (MODE 1 — DEMO)
+# ==========================================
+# REAL ESP8266 SERIAL INGESTION BRIDGE
+# ==========================================
+
+latest_serial_data: Optional[Dict[str, Any]] = None
+latest_serial_time: float = 0.0
+serial_connected: bool = False
+active_serial_port: str = ""
+serial_thread: Optional[threading.Thread] = None
+
+def parse_esp8266_csv(line: str) -> Optional[Dict[str, Any]]:
+    """
+    Parses CSV stream from ESP8266 Firmware:
+    Format: timestamp_ms,accX_g,accY_g,accZ_g,gyroX_dps,gyroY_dps,gyroZ_dps,speedRPM,alignment
+    Example: 1500,0.012,-0.045,0.981,0.120,-0.050,0.010,120.50,OK
+    """
+    try:
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) < 9:
+            return None
+
+        # Ignore header line
+        if "timestamp" in parts[0].lower() or "accX" in parts[1]:
+            return None
+
+        timestamp_ms = float(parts[0])
+        accX = float(parts[1])
+        accY = float(parts[2])
+        accZ = float(parts[3])
+        gyroX = float(parts[4])
+        gyroY = float(parts[5])
+        gyroZ = float(parts[6])
+        speedRPM = float(parts[7])
+        alignment_str = parts[8].upper()
+
+        # Compute Vibration:
+        # Total acceleration magnitude V = sqrt(accX^2 + accY^2 + accZ^2)
+        raw_mag = math.sqrt(accX**2 + accY**2 + accZ**2)
+        gyro_mag = math.sqrt(gyroX**2 + gyroY**2 + gyroZ**2)
+        
+        # Dynamic vibration (subtracting 1g static gravity)
+        dyn_acc = abs(raw_mag - 1.0)
+        vib_mm_s = round(dyn_acc * 9.81 + (gyro_mag * 0.04), 2)
+        if vib_mm_s < 0.2:
+            vib_mm_s = round(raw_mag * 1.5, 2)
+
+        # Belt Misalignment (Tracking Offset in mm)
+        # HW-201 sensor: "MISALIGNED" -> 8.5 mm shift (Warning/Critical); "OK" -> 1.2 mm (Normal)
+        tracking_mm = 8.5 if "MISALIGN" in alignment_str else 1.2
+
+        # Belt Speed in m/s (Pulley r=0.3m -> v = RPM * 0.0314 m/s)
+        belt_speed = round(speedRPM * 0.0314, 2) if speedRPM > 0 else 1.57
+
+        return {
+            "source": "esp8266_hardware",
+            "vibration": vib_mm_s,
+            "rpm": round(speedRPM, 1),
+            "speed": belt_speed,
+            "tracking": tracking_mm,
+            "alignment": alignment_str,
+            "rawAccel": {"accX": accX, "accY": accY, "accZ": accZ},
+            "rawGyro": {"gyroX": gyroX, "gyroY": gyroY, "gyroZ": gyroZ},
+            "timestamp_ms": timestamp_ms,
+            "sensorsOnline": 3,
+            "totalSensors": 3,
+        }
+    except Exception:
+        return None
+
+def serial_reader_loop():
+    global serial_connected, active_serial_port, latest_serial_data, latest_serial_time
+    try:
+        import serial
+        import serial.tools.list_ports
+    except ImportError:
+        print("[Serial Bridge] pyserial module not available.")
+        return
+
+    while True:
+        try:
+            # List available ports, filtering out Bluetooth Virtual COM ports
+            ports = list(serial.tools.list_ports.comports())
+            candidate_port = None
+            for p in ports:
+                desc = p.description.lower()
+                hwid = p.hwid.lower()
+                if "bluetooth" not in desc and "bthenum" not in hwid and "standard serial" not in desc:
+                    candidate_port = p.device
+                    break
+
+            if not candidate_port:
+                serial_connected = False
+                active_serial_port = ""
+                time.sleep(2.0)
+                continue
+
+            active_serial_port = candidate_port
+            print(f"[Serial Bridge] Attempting connection to ESP8266 on {candidate_port} at 115200 baud...")
+            
+            with serial.Serial(candidate_port, 115200, timeout=1.0) as ser:
+                serial_connected = True
+                print(f"[Serial Bridge] Successfully connected to ESP8266 on {candidate_port}!")
+
+                while True:
+                    line = ser.readline().decode('utf-8', errors='ignore').strip()
+                    if line:
+                        parsed = parse_esp8266_csv(line)
+                        if parsed:
+                            latest_serial_data = parsed
+                            latest_serial_time = time.time()
+
+        except Exception as e:
+            serial_connected = False
+            active_serial_port = ""
+            time.sleep(3.0)
+
+def start_serial_bridge():
+    global serial_thread
+    if serial_thread is None or not serial_thread.is_alive():
+        serial_thread = threading.Thread(target=serial_reader_loop, daemon=True)
+        serial_thread.start()
+        print("[Serial Bridge] Background Serial Listener thread started.")
+
+# Launch Serial Reader Thread on startup
+start_serial_bridge()
+
+# Dynamic Value Generator (REAL ESP8266 SENSOR DATA with DEMO Fallback)
 def get_live_sensors():
-    global active_anomaly
+    global active_anomaly, latest_serial_data, latest_serial_time
+    
+    # Priority 1: Use REAL ESP8266 Serial Sensor Readings if received in last 5 seconds
+    if latest_serial_data and (time.time() - latest_serial_time < 5.0):
+        data = dict(latest_serial_data)
+        # Apply anomaly simulation overlay if user triggers test buttons in UI
+        if active_anomaly == 'JOINT_RUPTURE':
+            data["vibration"] = max(data["vibration"], 6.2)
+        elif active_anomaly == 'MISALIGNMENT_SPIKE':
+            data["tracking"] = 8.5
+        elif active_anomaly == 'MOTOR_OVERHEAT':
+            data["temperature"] = 85.0
+        return data
+
+    # Priority 2: Fallback to simulated generator if hardware is not connected
     if active_anomaly == 'JOINT_RUPTURE':
         return {
             "source": "simulation",
             "vibration": round(5.8 + random.uniform(-0.4, 0.6), 1),
-            "temperature": round(68.0 + random.uniform(-2.0, 4.0), 1),
-            "rpm": 1320,
-            "current": 4.8,
+            "rpm": 42.0,
+            "speed": 1.32,
             "tracking": round(6.5 + random.uniform(-0.5, 1.5), 1),
-            "acoustic": round(88 + random.uniform(-3, 5)),
-            "load": round(92 + random.uniform(-2, 4)),
-            "speed": 3.8,
-            "tension": round(195 + random.uniform(-5, 10)),
-            "sensorsOnline": 7,
-            "totalSensors": 7,
+            "alignment": "MISALIGNED",
+            "sensorsOnline": 3,
+            "totalSensors": 3,
         }
     elif active_anomaly == 'MISALIGNMENT_SPIKE':
         return {
             "source": "simulation",
             "vibration": round(3.9 + random.uniform(-0.3, 0.4), 1),
-            "temperature": round(59.0 + random.uniform(-2.0, 3.0), 1),
-            "rpm": 1410,
-            "current": 4.1,
+            "rpm": 48.0,
+            "speed": 1.51,
             "tracking": round(8.2 + random.uniform(-1.0, 1.5), 1),
-            "acoustic": round(76 + random.uniform(-2, 4)),
-            "load": round(84 + random.uniform(-3, 3)),
-            "speed": 3.8,
-            "tension": round(162 + random.uniform(-4, 6)),
-            "sensorsOnline": 7,
-            "totalSensors": 7,
+            "alignment": "MISALIGNED",
+            "sensorsOnline": 3,
+            "totalSensors": 3,
         }
     elif active_anomaly == 'MOTOR_OVERHEAT':
         return {
             "source": "simulation",
-            "vibration": round(3.4 + random.uniform(-0.2, 0.3), 1),
-            "temperature": round(84.0 + random.uniform(-3.0, 5.0), 1),
-            "rpm": 1280,
-            "current": 5.2,
+            "vibration": round(4.8 + random.uniform(-0.3, 0.5), 1),
+            "rpm": 32.0,
+            "speed": 1.0,
             "tracking": round(1.1 + random.uniform(-0.4, 0.4), 1),
-            "acoustic": round(79 + random.uniform(-2, 3)),
-            "load": round(88 + random.uniform(-2, 3)),
-            "speed": 3.8,
-            "tension": round(148 + random.uniform(-3, 3)),
-            "sensorsOnline": 7,
-            "totalSensors": 7,
+            "alignment": "OK",
+            "sensorsOnline": 3,
+            "totalSensors": 3,
         }
-    else: # NORMAL DEMO MODE
+    else: # NORMAL PROTOTYPE DEMO MODE
         return {
             "source": "simulation",
             "vibration": round(1.8 + random.uniform(-0.2, 0.3), 1),
-            "temperature": round(42.5 + random.uniform(-1.5, 2.0), 1),
-            "rpm": 1450,
-            "current": 3.8,
+            "rpm": 50.0,
+            "speed": 1.57,
             "tracking": round(1.2 + random.uniform(-0.3, 0.4), 1),
-            "acoustic": round(61 + random.uniform(-2, 3)),
-            "load": round(82 + random.uniform(-3, 4)),
-            "speed": 3.8,
-            "tension": round(142 + random.uniform(-3, 4)),
-            "sensorsOnline": 7,
-            "totalSensors": 7,
+            "alignment": "OK",
+            "sensorsOnline": 3,
+            "totalSensors": 3,
         }
 
 # ==========================================
@@ -717,6 +835,16 @@ def get_device_telemetry(device_id: str):
 
 # --- ORIGINAL CORE ENDPOINTS (PRESERVED) ---
 
+@app.get("/api/serial/status")
+def get_serial_bridge_status():
+    return {
+        "serialConnected": serial_connected,
+        "activePort": active_serial_port if serial_connected else None,
+        "lastReadingTime": datetime.fromtimestamp(latest_serial_time).isoformat() if latest_serial_time > 0 else None,
+        "secondsAgo": round(time.time() - latest_serial_time, 1) if latest_serial_time > 0 else None,
+        "latestSensors": latest_serial_data
+    }
+
 @app.get("/api/telemetry")
 def get_telemetry():
     sensors = get_live_sensors()
@@ -726,10 +854,10 @@ def get_telemetry():
                 "reading_id": f"READ_{uuid.uuid4().hex[:8]}",
                 "user_id": "USER_001",
                 "belt_id": "BELT_001",
-                "device_id": "SIMULATED_DEMO_NODE",
+                "device_id": active_serial_port if serial_connected else "SIMULATED_DEMO_NODE",
                 "timestamp": time.time(),
                 "isoTimestamp": datetime.now().isoformat(),
-                "source": "simulation",
+                "source": "esp8266_hardware" if serial_connected else "simulation",
                 "sensors": sensors,
                 "activeAnomaly": active_anomaly
             })
@@ -739,6 +867,8 @@ def get_telemetry():
         "location": "Iron Ore Mine - Plant 2",
         "sensors": sensors,
         "activeAnomaly": active_anomaly,
+        "hardwareSerialConnected": serial_connected,
+        "activeSerialPort": active_serial_port if serial_connected else None
     }
 
 @app.get("/api/prediction")
@@ -772,14 +902,14 @@ def get_history():
         "filter": "7d",
         "overallCondition": "STABLE",
         "healthScore": "92%",
-        "summary": "The conveyor has remained stable over the last 7 days. Vibration increased slightly during high-load operation.",
+        "summary": "The conveyor has remained stable over the last 7 days monitored by MPU6050 and HW-201 prototype sensors.",
         "changes": [
-            {"name": "Vibration", "value": "4.2 mm/s", "diff": "↑ 18% from baseline", "status": "HIGH"},
-            {"name": "Temperature", "value": "51°C", "diff": "↑ 9% from baseline", "status": "ELEVATED"},
-            {"name": "Load", "value": "5.1 ton", "diff": "→ Stable", "status": "NORMAL"},
-            {"name": "Speed", "value": "112 RPM", "diff": "↓ 4% from baseline", "status": "NORMAL"},
+            {"name": "Vibration (MPU6050)", "value": "1.8 mm/s", "diff": "→ Stable", "status": "NORMAL"},
+            {"name": "Pulley Speed (HW-201)", "value": "50 RPM", "diff": "→ Stable", "status": "NORMAL"},
+            {"name": "Linear Speed (HW-201)", "value": "1.57 m/s", "diff": "→ Stable", "status": "NORMAL"},
+            {"name": "Belt Alignment (HW-201)", "value": "OK (1.2 mm)", "diff": "→ Centered", "status": "NORMAL"},
         ],
-        "aiConclusion": "Main change: Vibration has increased the most.",
+        "aiConclusion": "System operating within safe bounds across all 3 prototype sensors.",
     }
 
 @app.get("/api/alerts")

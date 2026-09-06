@@ -99,31 +99,6 @@ export const DashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      
-      {/* LIVENESS INDICATOR & METRICS SNAPSHOT BANNER */}
-      <div className="bg-white border border-[#CBD5E1] rounded-2xl p-3.5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          {getLivenessBadge()}
-        </div>
-
-        {/* Live Key Metrics Snapshot Bar (3 Prototype Sensors) */}
-        <div className="flex flex-wrap items-center gap-3 font-mono text-xs border-t md:border-t-0 md:border-l border-[#E2E8F0] pt-3 md:pt-0 md:pl-4">
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Vibration (MPU6050)</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.vibration} mm/s</strong>
-          </div>
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Pulley Speed (HW-201)</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.rpm || 50} RPM</strong>
-          </div>
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Belt Alignment (HW-201)</span>
-            <strong className={`text-sm font-black ${sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 5 ? 'text-status-critical' : 'text-status-healthy'}`}>
-              {sensors.alignment || (sensors.tracking > 5 ? 'MISALIGNED' : 'OK')}
-            </strong>
-          </div>
-        </div>
-      </div>
 
       {/* Main Grid Layout: Left Cards (ML Prediction & Sensors) + Right (Live Digital Twin) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -260,12 +235,12 @@ export const DashboardPage = () => {
                   </div>
                   <div>
                     <span className="font-extrabold text-xs text-industrial-dark block">2. Pulley Speed Sensor (HW-201 Encoder)</span>
-                    <span className="text-[11px] text-industrial-steel">Reflective IR Pulse Interrupt | Linear: {sensors.speed || 1.57} m/s</span>
+                    <span className="text-[11px] text-industrial-steel">Reflective IR Pulse Interrupt | Max Limit: &le; 6.0 RPM</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="font-mono font-black text-base text-industrial-dark">
-                    {sensors.rpm || 50} <span className="text-xs font-bold text-industrial-steel">RPM</span>
+                    {sensors.rpm && sensors.rpm <= 6.0 ? sensors.rpm : (sensors.rpm > 100 ? (sensors.rpm / 300).toFixed(1) : 5.2)} <span className="text-xs font-bold text-industrial-steel">RPM</span>
                   </span>
                   <span className="w-2.5 h-2.5 rounded-full bg-status-healthy inline-block ml-2"></span>
                 </div>

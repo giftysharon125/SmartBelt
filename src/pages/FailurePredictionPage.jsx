@@ -34,29 +34,35 @@ export const FailurePredictionPage = () => {
     modelConfidence = '91%';
   }
 
-  // Section 2: Sensor parameters contributing to prediction
+  // Section 2: Sensor parameters contributing to prediction (3 Prototype Hardware Sensors)
   const getSensorParameters = () => {
+    const vib = sensors.vibration || 1.8;
+    const rpm = sensors.rpm || 50;
+    const speed = sensors.speed || 1.57;
+    const tracking = sensors.tracking || 1.2;
+    const align = sensors.alignment || (tracking > 5 ? 'MISALIGNED' : 'OK');
+
     if (predictedCondition === 'CRITICAL') {
       return [
-        { name: 'Vibration', value: `${sensors.vibration} mm/s`, status: 'HIGH', isAbnormal: true },
-        { name: 'Temperature', value: `${sensors.temperature} °C`, status: 'HIGH', isAbnormal: true },
-        { name: 'Belt Speed', value: '112 RPM', status: 'NORMAL', isAbnormal: false },
-        { name: 'Load', value: '5.8 ton', status: 'HIGH', isAbnormal: true },
+        { name: 'Vibration (MPU6050)', value: `${vib} mm/s`, status: 'HIGH', isAbnormal: true },
+        { name: 'Belt Alignment (HW-201)', value: `${align} (${tracking} mm)`, status: 'DRIFT', isAbnormal: true },
+        { name: 'Pulley Speed (HW-201)', value: `${rpm} RPM`, status: 'REDUCED', isAbnormal: true },
+        { name: 'Linear Speed (HW-201)', value: `${speed} m/s`, status: 'SLOWNESS', isAbnormal: true },
       ];
     }
     if (predictedCondition === 'WARNING') {
       return [
-        { name: 'Vibration', value: '4.2 mm/s', status: 'HIGH', isAbnormal: true },
-        { name: 'Temperature', value: '51 °C', status: 'ELEVATED', isAbnormal: true },
-        { name: 'Belt Speed', value: '112 RPM', status: 'NORMAL', isAbnormal: false },
-        { name: 'Load', value: '5.1 ton', status: 'NORMAL', isAbnormal: false },
+        { name: 'Vibration (MPU6050)', value: `${vib} mm/s`, status: 'ELEVATED', isAbnormal: true },
+        { name: 'Belt Alignment (HW-201)', value: `${align} (${tracking} mm)`, status: 'WARNING', isAbnormal: true },
+        { name: 'Pulley Speed (HW-201)', value: `${rpm} RPM`, status: 'NORMAL', isAbnormal: false },
+        { name: 'Linear Speed (HW-201)', value: `${speed} m/s`, status: 'NORMAL', isAbnormal: false },
       ];
     }
     return [
-      { name: 'Vibration', value: `${sensors.vibration} mm/s`, status: 'NORMAL', isAbnormal: false },
-      { name: 'Temperature', value: `${sensors.temperature} °C`, status: 'NORMAL', isAbnormal: false },
-      { name: 'Belt Speed', value: '112 RPM', status: 'NORMAL', isAbnormal: false },
-      { name: 'Load', value: '4.2 ton', status: 'NORMAL', isAbnormal: false },
+      { name: 'Vibration (MPU6050)', value: `${vib} mm/s`, status: 'NORMAL', isAbnormal: false },
+      { name: 'Belt Alignment (HW-201)', value: `${align} (${tracking} mm)`, status: 'NORMAL', isAbnormal: false },
+      { name: 'Pulley Speed (HW-201)', value: `${rpm} RPM`, status: 'NORMAL', isAbnormal: false },
+      { name: 'Linear Speed (HW-201)', value: `${speed} m/s`, status: 'NORMAL', isAbnormal: false },
     ];
   };
 
@@ -65,20 +71,20 @@ export const FailurePredictionPage = () => {
   // Concise explanation for Section 2
   const getExplanation = () => {
     if (predictedCondition === 'CRITICAL') {
-      return "Severe vibration spike combined with high joint temperature indicates imminent splice delamination and belt rupture risk.";
+      return "Severe vibration spike combined with belt misalignment drift indicates imminent splice delamination and edge tear risk.";
     }
     if (predictedCondition === 'WARNING') {
-      return "Elevated vibration combined with increased temperature is contributing to the current belt/joint deterioration risk.";
+      return "Elevated vibration combined with HW-201 edge tracking deviation is contributing to the current belt risk.";
     }
-    return "All key sensor parameters are operating within normal safe thresholds.";
+    return "All 3 prototype sensors (MPU6050 Vibration, HW-201 Speed, HW-201 Alignment) are operating within safe bounds.";
   };
 
   // Section 5: Historical Failure Records
   const historicalRecords = [
-    { date: '02 Sep 2026', condition: 'Joint deterioration', cause: 'High vibration', trigger: '4.8 mm/s', action: 'Joint inspected' },
-    { date: '18 Aug 2026', condition: 'Overheating', cause: 'High temperature', trigger: '57 °C', action: 'Bearing checked' },
-    { date: '05 Aug 2026', condition: 'Belt overload', cause: 'Excess load', trigger: '6.1 ton', action: 'Load reduced' },
-    { date: '21 Jul 2026', condition: 'Tracking misalignment', cause: 'Side deviation', trigger: '+4.5 mm', action: 'Idlers adjusted' },
+    { date: '02 Sep 2026', condition: 'Joint deterioration', cause: 'High vibration spike', trigger: '4.8 mm/s', action: 'Joint inspected & splice re-bonded' },
+    { date: '18 Aug 2026', condition: 'Belt edge drift', cause: 'Tracking misalignment', trigger: '8.5 mm (MISALIGNED)', action: 'Tracking idler realigned' },
+    { date: '05 Aug 2026', condition: 'Pulley slip', cause: 'Speed reduction', trigger: '35 RPM', action: 'Take-up tension recalibrated' },
+    { date: '21 Jul 2026', condition: 'Vibration anomaly', cause: 'Bearing unbalance', trigger: '5.2 mm/s', action: 'Bearing re-greased' },
   ];
 
   const displayedRecords = showAllHistory ? historicalRecords : historicalRecords.slice(0, 3);
@@ -89,22 +95,22 @@ export const FailurePredictionPage = () => {
       title: 'Belt Joint Inspection',
       icon: Zap,
       badge: 'JOINT SPLICE',
-      why: 'Elevated vibration indicates increased mechanical stress around the belt joint splice.',
+      why: 'Elevated MPU6050 vibration indicates increased mechanical stress around the belt joint splice.',
       action: 'Inspect the belt joint/splice at the next safe shutdown.',
     },
     {
       title: 'Belt Alignment Check',
       icon: Sliders,
       badge: 'TRACKING',
-      why: 'Tracking deviation or vibration behaviour indicates belt alignment problems.',
-      action: 'Check belt tracking and roller alignment.',
+      why: 'HW-201 reflective IR edge detector indicates tracking misalignment drift outside normal flight path.',
+      action: 'Check belt tracking and self-aligning idler frame position.',
     },
     {
-      title: 'Temperature & Roller Check',
+      title: 'Pulley Speed Audit',
       icon: Flame,
-      badge: 'THERMAL',
-      why: 'Temperature is above the learned baseline operating pattern.',
-      action: 'Inspect rollers, bearings, and friction points.',
+      badge: 'SPEED ENCODER',
+      why: 'HW-201 pulley encoder indicates rotational speed drop below baseline 50 RPM.',
+      action: 'Inspect drive pulley friction, motor coupling, and speed sensor alignment.',
     },
   ];
 

@@ -84,11 +84,12 @@ export const AlertsMaintenancePage = () => {
     setReplayAnimKey(prev => prev + 1);
   };
 
-  // Dynamic values based on sensors
-  const currentVib = sensors?.vibration || 4.2;
-  const currentTemp = sensors?.temperature || 51;
-  const currentLoad = ((sensors?.load || 102) / 20).toFixed(1);
-  const currentSpeed = ((sensors?.speed || 3.8) * 29.5).toFixed(0);
+  // Dynamic values based on 3 prototype hardware sensors
+  const currentVib = sensors?.vibration || 1.8;
+  const currentRpm = sensors?.rpm || 50;
+  const currentSpeed = sensors?.speed || 1.57;
+  const currentTracking = sensors?.tracking || 1.2;
+  const currentAlignment = sensors?.alignment || (currentTracking > 5 ? 'MISALIGNED' : 'OK');
 
   return (
     <div className="space-y-6 text-[#172B3A] font-sans select-none pb-10 bg-[#F3F6F7] min-h-full">
@@ -252,56 +253,56 @@ export const AlertsMaintenancePage = () => {
               </div>
             </div>
 
-            {/* 4 Sensor Cards Grid (2x2) */}
+            {/* 4 Prototype Sensor Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Vibration */}
+              {/* Vibration (MPU6050) */}
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B] block">Vibration</span>
+                    <span className="text-xs font-bold text-[#64748B] block">Vibration (MPU6050)</span>
                     <strong className="text-base font-mono font-black text-[#D97706]">{currentVib} mm/s</strong>
                   </div>
                 </div>
               </div>
 
-              {/* Temperature */}
+              {/* Belt Alignment (HW-201) */}
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-[#D97706]/15 text-[#D97706] rounded-xl border border-[#D97706]/30">
-                    <Thermometer className="w-5 h-5" />
+                    <Activity className="w-5 h-5 text-[#D97706]" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B] block">Temperature</span>
-                    <strong className="text-base font-mono font-black text-[#D97706]">{currentTemp} °C</strong>
+                    <span className="text-xs font-bold text-[#64748B] block">Belt Alignment (HW-201 IR)</span>
+                    <strong className="text-base font-mono font-black text-[#D97706]">{currentAlignment} ({currentTracking} mm)</strong>
                   </div>
                 </div>
               </div>
 
-              {/* Load */}
-              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
-                    <Weight className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#64748B] block">Load</span>
-                    <strong className="text-base font-mono font-black text-[#172B3A]">{currentLoad} ton</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Speed */}
+              {/* Pulley Speed (HW-201) */}
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
                     <Gauge className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B] block">Speed</span>
-                    <strong className="text-base font-mono font-black text-[#172B3A]">{currentSpeed} RPM</strong>
+                    <span className="text-xs font-bold text-[#64748B] block">Pulley Speed (HW-201 IR)</span>
+                    <strong className="text-base font-mono font-black text-[#172B3A]">{currentRpm} RPM</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Belt Linear Speed */}
+              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
+                    <Gauge className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-[#64748B] block">Linear Speed</span>
+                    <strong className="text-base font-mono font-black text-[#172B3A]">{currentSpeed} m/s</strong>
                   </div>
                 </div>
               </div>
@@ -315,7 +316,7 @@ export const AlertsMaintenancePage = () => {
               <div className="font-mono">
                 <strong className="text-[#172B3A] font-bold">Why this alert?</strong>
                 <span className="text-[#64748B] ml-2 font-sans font-medium">
-                  High vibration and elevated temperature detected, indicating possible belt joint wear or misalignment.
+                  Elevated MPU6050 vibration or HW-201 edge misalignment detected on prototype hardware sensors.
                 </span>
               </div>
             </div>
@@ -563,99 +564,99 @@ export const AlertsMaintenancePage = () => {
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B]">Vibration</span>
+                    <span className="text-xs font-bold text-[#64748B]">Vibration (MPU6050)</span>
                     <span className="text-[10px] text-[#64748B] font-mono block">mm/s</span>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 font-mono">
                   <span className="px-2.5 py-1 bg-[#D64545]/15 text-[#D64545] font-black text-xs rounded-md border border-[#D64545]/30">
-                    4.2
+                    5.8
                   </span>
                   <ArrowRight className="w-4 h-4 text-[#64748B]" />
                   <span className="px-2.5 py-1 bg-[#2E9D59]/15 text-[#2E9D59] font-black text-xs rounded-md border border-[#2E9D59]/30">
-                    2.1
+                    1.8
                   </span>
                   <span className="text-xs font-extrabold text-[#2E9D59] flex items-center gap-0.5 ml-2">
-                    <TrendingDown className="w-3.5 h-3.5" /> 50% decrease
+                    <TrendingDown className="w-3.5 h-3.5" /> 69% reduction
                   </span>
                 </div>
               </div>
 
-              {/* Temperature Comparison */}
+              {/* Belt Alignment Comparison */}
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-[#D97706]/15 text-[#D97706] rounded-xl border border-[#D97706]/30">
-                    <Thermometer className="w-5 h-5" />
+                    <Activity className="w-5 h-5 text-[#D97706]" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B]">Temperature</span>
-                    <span className="text-[10px] text-[#64748B] font-mono block">°C</span>
+                    <span className="text-xs font-bold text-[#64748B]">Belt Alignment (HW-201)</span>
+                    <span className="text-[10px] text-[#64748B] font-mono block">Offset mm</span>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 font-mono">
                   <span className="px-2.5 py-1 bg-[#D64545]/15 text-[#D64545] font-black text-xs rounded-md border border-[#D64545]/30">
-                    51
+                    8.5 mm (MISALIGNED)
                   </span>
                   <ArrowRight className="w-4 h-4 text-[#64748B]" />
                   <span className="px-2.5 py-1 bg-[#2E9D59]/15 text-[#2E9D59] font-black text-xs rounded-md border border-[#2E9D59]/30">
-                    43
+                    1.2 mm (OK)
                   </span>
                   <span className="text-xs font-extrabold text-[#2E9D59] flex items-center gap-0.5 ml-2">
-                    <TrendingDown className="w-3.5 h-3.5" /> 16% decrease
+                    <TrendingDown className="w-3.5 h-3.5" /> Re-centered
                   </span>
                 </div>
               </div>
 
-              {/* Load Comparison */}
-              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
-                    <Weight className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#64748B]">Load</span>
-                    <span className="text-[10px] text-[#64748B] font-mono block">ton</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 font-mono">
-                  <span className="px-2.5 py-1 bg-[#D64545]/15 text-[#D64545] font-black text-xs rounded-md border border-[#D64545]/30">
-                    5.1
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-[#64748B]" />
-                  <span className="px-2.5 py-1 bg-[#2E9D59]/15 text-[#2E9D59] font-black text-xs rounded-md border border-[#2E9D59]/30">
-                    5.0
-                  </span>
-                  <span className="text-xs font-extrabold text-[#2E9D59] flex items-center gap-0.5 ml-2">
-                    <TrendingDown className="w-3.5 h-3.5" /> 2% decrease
-                  </span>
-                </div>
-              </div>
-
-              {/* Speed Comparison */}
+              {/* Pulley Speed Comparison */}
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
                     <Gauge className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#64748B]">Speed</span>
+                    <span className="text-xs font-bold text-[#64748B]">Pulley Speed (HW-201)</span>
                     <span className="text-[10px] text-[#64748B] font-mono block">RPM</span>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3 font-mono">
                   <span className="px-2.5 py-1 bg-[#D64545]/15 text-[#D64545] font-black text-xs rounded-md border border-[#D64545]/30">
-                    112
+                    35 RPM
                   </span>
                   <ArrowRight className="w-4 h-4 text-[#64748B]" />
                   <span className="px-2.5 py-1 bg-[#2E9D59]/15 text-[#2E9D59] font-black text-xs rounded-md border border-[#2E9D59]/30">
-                    110
+                    50 RPM
                   </span>
                   <span className="text-xs font-extrabold text-[#2E9D59] flex items-center gap-0.5 ml-2">
-                    <TrendingDown className="w-3.5 h-3.5" /> 2% decrease
+                    Restored
+                  </span>
+                </div>
+              </div>
+
+              {/* Linear Speed Comparison */}
+              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#CBD5E1] flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-[#159A9C]/15 text-[#159A9C] rounded-xl border border-[#159A9C]/30">
+                    <Gauge className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-[#64748B]">Linear Speed</span>
+                    <span className="text-[10px] text-[#64748B] font-mono block">m/s</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 font-mono">
+                  <span className="px-2.5 py-1 bg-[#D64545]/15 text-[#D64545] font-black text-xs rounded-md border border-[#D64545]/30">
+                    1.1 m/s
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-[#64748B]" />
+                  <span className="px-2.5 py-1 bg-[#2E9D59]/15 text-[#2E9D59] font-black text-xs rounded-md border border-[#2E9D59]/30">
+                    1.57 m/s
+                  </span>
+                  <span className="text-xs font-extrabold text-[#2E9D59] flex items-center gap-0.5 ml-2">
+                    Nominal
                   </span>
                 </div>
               </div>

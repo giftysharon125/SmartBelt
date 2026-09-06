@@ -33,17 +33,13 @@ export class ConveyorSensors {
 
   create3DSensorProbes() {
     const opticalAlignSensor = this.createBracketProbeMesh("sensor_opt_align", new BABYLON.Vector3(-5.5, this.height + 0.1, 0.92));
-    const tempSensor = this.createBracketProbeMesh("sensor_temp", new BABYLON.Vector3(6.2, this.height + 0.2, 0.92));
+    const speedEncoderSensor = this.createBracketProbeMesh("sensor_speed", new BABYLON.Vector3(6.2, this.height + 0.2, 0.92));
     const vibSensor = this.createBracketProbeMesh("sensor_vib", new BABYLON.Vector3(2.0, this.height + 0.1, 0.92));
-    const loadSensor = this.createBracketProbeMesh("sensor_load", new BABYLON.Vector3(-2.0, this.height + 0.1, 0.92));
-    const tensionSensor = this.createBracketProbeMesh("sensor_tension", new BABYLON.Vector3(-6.8, this.height - 0.1, 0.92));
 
     this.sensorProbes = [
       { id: 'alignment', mesh: opticalAlignSensor },
-      { id: 'temperature', mesh: tempSensor },
-      { id: 'vibration', mesh: vibSensor },
-      { id: 'load', mesh: loadSensor },
-      { id: 'tension', mesh: tensionSensor }
+      { id: 'speed', mesh: speedEncoderSensor },
+      { id: 'vibration', mesh: vibSensor }
     ];
   }
 
@@ -84,11 +80,9 @@ export class ConveyorSensors {
     this.advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI_Sensors", true, this.scene);
 
     const labelConfigs = [
-      { id: 'motor_health', text: 'MOTOR HEALTHY', target: this.sensorProbes[1].mesh, offsetY: -55, color: '#00e676' },
-      { id: 'temperature', text: 'TEMP: 42 °C', target: this.sensorProbes[1].mesh, offsetY: -32, color: '#00e5ff' },
       { id: 'vibration', text: 'VIB: 1.8 mm/s', target: this.sensorProbes[2].mesh, offsetY: -35, color: '#00e5ff' },
-      { id: 'alignment', text: 'ALIGNMENT: OK', target: this.sensorProbes[0].mesh, offsetY: -35, color: '#00e676' },
-      { id: 'load', text: 'LOAD: 83 %', target: this.sensorProbes[3].mesh, offsetY: -35, color: '#ffb300' }
+      { id: 'speed', text: 'SPEED: 50 RPM', target: this.sensorProbes[1].mesh, offsetY: -35, color: '#00e5ff' },
+      { id: 'alignment', text: 'ALIGNMENT: OK', target: this.sensorProbes[0].mesh, offsetY: -35, color: '#00e676' }
     ];
 
     labelConfigs.forEach(cfg => {
@@ -118,41 +112,24 @@ export class ConveyorSensors {
   }
 
   update(state, healthStatus) {
-    if (!this.guiLabels.temperature) return;
+    if (!this.guiLabels.vibration) return;
 
-    const tempHealth = healthStatus ? healthStatus.metrics.temperature : 'NORMAL';
-    this.guiLabels.temperature.text.text = `TEMP: ${state.temperature} °C`;
-    this.guiLabels.temperature.container.color = tempHealth === 'CRITICAL' ? '#ff1744' : tempHealth === 'WARNING' ? '#ffb300' : '#00e5ff';
-
-    const vibHealth = healthStatus ? healthStatus.metrics.vibration : 'NORMAL';
-    this.guiLabels.vibration.text.text = `VIB: ${state.vibration.toFixed(1)} mm/s`;
+    const vibVal = state.vibration ? state.vibration.toFixed(1) : '1.8';
+    const vibHealth = state.vibration > 4 ? 'CRITICAL' : state.vibration > 3 ? 'WARNING' : 'NORMAL';
+    this.guiLabels.vibration.text.text = `VIB: ${vibVal} mm/s`;
     this.guiLabels.vibration.container.color = vibHealth === 'CRITICAL' ? '#ff1744' : vibHealth === 'WARNING' ? '#ffb300' : '#00e5ff';
 
-    const alignHealth = healthStatus ? healthStatus.metrics.alignment : 'NORMAL';
-    if (alignHealth === 'CRITICAL') {
-      this.guiLabels.alignment.text.text = 'ALIGN: BLOCKED';
-      this.guiLabels.alignment.container.color = '#ff1744';
-    } else if (alignHealth === 'WARNING') {
+    const rpmVal = state.motor_rpm || state.rpm || 50;
+    this.guiLabels.speed.text.text = `SPEED: ${rpmVal} RPM`;
+    this.guiLabels.speed.container.color = rpmVal < 40 ? '#ffb300' : '#00e5ff';
+
+    const isMisaligned = state.alignment === 'MISALIGNED' || Math.abs(state.alignment) > 5;
+    if (isMisaligned) {
       this.guiLabels.alignment.text.text = 'ALIGN: DRIFT';
-      this.guiLabels.alignment.container.color = '#ffb300';
+      this.guiLabels.alignment.container.color = '#ff1744';
     } else {
       this.guiLabels.alignment.text.text = 'ALIGNMENT: OK';
       this.guiLabels.alignment.container.color = '#00e676';
-    }
-
-    const motorHealth = healthStatus ? healthStatus.components.motor : 'NORMAL';
-    if (motorHealth === 'CRITICAL') {
-      this.guiLabels.motor_health.text.text = 'MOTOR CRITICAL';
-      this.guiLabels.motor_health.container.color = '#ff1744';
-      this.guiLabels.motor_health.text.color = '#ff1744';
-    } else if (motorHealth === 'WARNING') {
-      this.guiLabels.motor_health.text.text = 'MOTOR OVERHEAT';
-      this.guiLabels.motor_health.container.color = '#ffb300';
-      this.guiLabels.motor_health.text.color = '#ffb300';
-    } else {
-      this.guiLabels.motor_health.text.text = 'MOTOR HEALTHY';
-      this.guiLabels.motor_health.container.color = '#00e676';
-      this.guiLabels.motor_health.text.color = '#00e676';
     }
   }
 }

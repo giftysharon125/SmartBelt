@@ -170,107 +170,108 @@ export const HistoryTrendsPage = () => {
 
   const currentStatus = getHealthStatus();
 
-  // Dynamic Sensor Data for What Changed & Sensor Condition
+  // Dynamic Sensor Data for What Changed & Sensor Condition (3 Prototype Hardware Sensors)
   const currentVib = sensors.vibration;
-  const currentTemp = sensors.temperature;
-  const currentLoad = (sensors.load / 20).toFixed(1);
-  const currentSpeed = (sensors.speed * 29.5).toFixed(0);
+  const currentRpm = sensors.rpm || 50;
+  const currentSpeed = sensors.speed || 1.57;
+  const currentTracking = sensors.tracking || 1.2;
+  const currentAlignment = sensors.alignment || (currentTracking > 5 ? 'MISALIGNED' : 'OK');
 
   const whatChangedRows = [
     { 
       id: 'vib', 
-      name: 'Vibration', 
+      name: 'Vibration (MPU6050)', 
       icon: Activity, 
       val: `${currentVib} mm/s`, 
       change: currentVib > 4.0 ? '↑ 18%' : '→ Stable', 
       isAbnormal: currentVib > 3.0, 
-      baseline: '3.5 mm/s', 
-      desc: 'Vibration variations observed during peak ore loading cycles.' 
+      baseline: '1.8 mm/s', 
+      desc: 'Tri-axial accelerometer & gyroscope vibration on drive housing.' 
     },
     { 
-      id: 'temp', 
-      name: 'Temperature', 
-      icon: Thermometer, 
-      val: `${currentTemp} °C`, 
-      change: currentTemp > 60 ? '↑ 9%' : '→ Stable', 
-      isAbnormal: currentTemp > 60, 
-      baseline: '47 °C', 
-      desc: 'Thermal reading on main drive motor and pulley bearing assemblies.' 
-    },
-    { 
-      id: 'load', 
-      name: 'Load', 
-      icon: Weight, 
-      val: `${currentLoad} ton`, 
-      change: '→ Stable', 
-      isAbnormal: sensors.load > 110, 
-      baseline: '5.0 ton', 
-      desc: 'Ore payload payload density monitored along impact idler bed.' 
+      id: 'rpm', 
+      name: 'Pulley Speed (HW-201)', 
+      icon: Gauge, 
+      val: `${currentRpm} RPM`, 
+      change: currentRpm < 40 ? '↓ Drop' : '→ Stable', 
+      isAbnormal: currentRpm < 40, 
+      baseline: '50 RPM', 
+      desc: 'Reflective IR pulse encoder measuring pulley shaft rotational speed.' 
     },
     { 
       id: 'speed', 
-      name: 'Speed', 
+      name: 'Linear Speed (HW-201)', 
       icon: Gauge, 
-      val: `${currentSpeed} RPM`, 
+      val: `${currentSpeed} m/s`, 
       change: '→ Stable', 
       isAbnormal: false, 
-      baseline: '116 RPM', 
-      desc: 'Conveyor drive motor shaft RPM operating within closed-loop controls.' 
+      baseline: '1.57 m/s', 
+      desc: 'Linear belt velocity derived from pulley encoder shaft pulses.' 
+    },
+    { 
+      id: 'align', 
+      name: 'Belt Alignment (HW-201)', 
+      icon: Radio, 
+      val: `${currentAlignment} (${currentTracking} mm)`, 
+      change: currentAlignment === 'MISALIGNED' ? '↑ Drift' : '→ Centered', 
+      isAbnormal: currentAlignment === 'MISALIGNED' || Math.abs(currentTracking) > 5, 
+      baseline: '1.2 mm (OK)', 
+      desc: 'Reflective IR edge sensor detecting belt tracking misalignment.' 
     }
   ];
 
   const sensorCards = [
     { 
       id: 'vib', 
-      name: 'Vibration', 
+      name: 'Vibration Sensor', 
       icon: Activity, 
       val: `${currentVib} mm/s`, 
       change: currentVib > 4.0 ? 'Increasing' : 'Stable', 
       isAbnormal: currentVib > 3.0, 
-      location: 'Joint J-03 (890m Impact Zone)',
-      threshold: '4.5 mm/s',
-      baseline: '3.5 mm/s',
+      location: 'Drive Motor & Joint J-03',
+      threshold: '3.0 mm/s',
+      baseline: '1.8 mm/s',
       trend: currentVib > 4.0 ? 'Upward Trend (+18%)' : 'Nominal Baseline',
-      history: ['3.4 mm/s', '3.6 mm/s', '3.8 mm/s', `${currentVib} mm/s`]
+      history: ['1.6 mm/s', '1.7 mm/s', '1.8 mm/s', `${currentVib} mm/s`]
     },
     { 
-      id: 'temp', 
-      name: 'Temperature', 
-      icon: Thermometer, 
-      val: `${currentTemp} °C`, 
-      change: currentTemp > 60 ? 'Increasing' : 'Stable', 
-      isAbnormal: currentTemp > 60, 
-      location: 'Drive Pulley Bearing M-01',
-      threshold: '65 °C',
-      baseline: '47 °C',
-      trend: currentTemp > 60 ? 'Thermal Spike (+9%)' : 'Thermal Stability',
-      history: ['45°C', '47°C', '49°C', `${currentTemp}°C`]
-    },
-    { 
-      id: 'load', 
-      name: 'Load', 
-      icon: Weight, 
-      val: `${currentLoad} ton`, 
-      change: 'Stable', 
-      isAbnormal: sensors.load > 110, 
-      location: 'Impact Bed Frame #4',
-      threshold: '6.5 ton',
-      baseline: '5.0 ton',
-      trend: 'Balanced Load Distribution',
-      history: ['4.8 ton', '5.0 ton', '5.1 ton', `${currentLoad} ton`]
+      id: 'rpm', 
+      name: 'Pulley Speed Encoder', 
+      icon: Gauge, 
+      val: `${currentRpm} RPM`, 
+      change: currentRpm < 40 ? 'Speed Reduction' : 'Stable', 
+      isAbnormal: currentRpm < 40, 
+      location: 'Head Drive Pulley Shaft',
+      threshold: '40 RPM',
+      baseline: '50 RPM',
+      trend: currentRpm < 40 ? 'Reduced Speed' : 'Locked Speed (50 RPM)',
+      history: ['50 RPM', '48 RPM', '49 RPM', `${currentRpm} RPM`]
     },
     { 
       id: 'speed', 
-      name: 'Speed', 
+      name: 'Linear Belt Speed', 
       icon: Gauge, 
-      val: `${currentSpeed} RPM`, 
+      val: `${currentSpeed} m/s`, 
       change: 'Stable', 
       isAbnormal: false, 
-      location: 'Main Drive Shaft CV-01',
-      threshold: '130 RPM',
-      baseline: '116 RPM',
-      trend: 'Locked Speed Loop (3.8 m/s)',
-      history: ['116 RPM', '115 RPM', '114 RPM', `${currentSpeed} RPM`]
+      location: 'Primary Overland Deck CV-01',
+      threshold: '1.25 m/s',
+      baseline: '1.57 m/s',
+      trend: 'Optimal Conveyor Transport Speed',
+      history: ['1.57 m/s', '1.55 m/s', '1.57 m/s', `${currentSpeed} m/s`]
+    },
+    { 
+      id: 'align', 
+      name: 'Belt Alignment Sensor', 
+      icon: Radio, 
+      val: `${currentAlignment}`, 
+      change: currentAlignment === 'MISALIGNED' ? 'Edge Drift' : 'Centered', 
+      isAbnormal: currentAlignment === 'MISALIGNED' || Math.abs(currentTracking) > 5, 
+      location: 'Return Idler Outer Edge Zone',
+      threshold: '5.0 mm offset',
+      baseline: '1.2 mm offset (OK)',
+      trend: currentAlignment === 'MISALIGNED' ? 'Side Misalignment' : 'Centered Tracking Path',
+      history: ['1.1 mm', '1.2 mm', '1.3 mm', `${currentTracking} mm`]
     }
   ];
 

@@ -7,16 +7,12 @@
 class ConveyorState {
   constructor() {
     this.state = {
-      speed: 3.8,           // m/s
-      temperature: 42,      // °C
-      vibration: 1.8,       // mm/s
-      load: 83,             // %
-      tension: 145,         // kN
-      alignment: 0.5,       // mm (+/-)
-      motor_rpm: 118,       // RPM
-      acoustic: 61,         // dB
+      speed: 3.8,           // m/s (HW-201 IR Encoder)
+      vibration: 1.8,       // mm/s (MPU6050 Accel/Gyro)
+      alignment: 1.2,       // mm offset / tracking (HW-201 IR Sensor)
+      motor_rpm: 50,        // RPM (HW-201 IR Encoder - Max motor speed: 60 RPM)
       running: true,        // boolean
-      activeAnomaly: null,  // null | 'JOINT_RUPTURE' | 'MISALIGNMENT_SPIKE' | 'MOTOR_OVERHEAT' | 'HEAVY_OVERLOAD'
+      activeAnomaly: null,  // null | 'JOINT_RUPTURE' | 'MISALIGNMENT_SPIKE' | 'MOTOR_OVERHEAT'
       minimalMode: false    // boolean for dashboard embed view
     };
 

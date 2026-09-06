@@ -42,44 +42,40 @@ export const SystemArchitecturePage = () => {
     },
     sensors: {
       title: 'IoT Sensors Layer',
-      badge: '4 FIELD TRANSDUCERS',
-      description: 'Captures real-time conveyor operating conditions across 4 sensor transducer modules.',
+      badge: '3 PROTOTYPE SENSORS',
+      description: 'Captures real-time conveyor operating conditions across 3 prototype sensor modules.',
       sections: [
         {
-          label: 'Monitored Parameters',
+          label: 'Monitored Prototype Sensors',
           items: [
-            '• MPU6050 — Vibration',
-            '• DS18B20 — Temperature',
-            '• Hall Sensor — Speed',
-            '• Load Cell + HX711 — Load',
+            '• MPU6050 — Tri-axial Vibration (I2C)',
+            '• HW-201 IR — Pulley Speed / RPM (Interrupt)',
+            '• HW-201 IR — Belt Alignment / Edge Drift (Digital)',
           ],
         },
         {
           label: 'Output Data',
-          value: 'Raw analog physical signals converted to digital I2C / SPI / ADC data for ESP32.',
+          value: 'Raw analog/digital physical signals converted to CSV stream over Serial (115200 baud).',
         },
       ],
     },
     esp32: {
-      title: 'ESP32 Sensor Layer',
+      title: 'ESP8266 / ESP32 Sensor Layer',
       badge: 'EDGE MCU & SENSORS',
-      description: 'Collects real-time conveyor data from sensors such as vibration, temperature, belt speed, load, tension, acoustic and belt tracking sensors.',
+      description: 'Collects real-time conveyor data from MPU6050 vibration sensor, HW-201 pulley speed encoder, and HW-201 belt alignment edge detector.',
       sections: [
         {
-          label: 'Data',
+          label: 'Data Stream (CSV format every 500ms)',
           items: [
-            '• Vibration',
-            '• Temperature',
-            '• Belt speed',
-            '• Load',
-            '• Tension',
-            '• Acoustic data',
-            '• Belt tracking',
+            '• MPU6050 Acceleration (accX, accY, accZ)',
+            '• MPU6050 Gyroscope (gyroX, gyroY, gyroZ)',
+            '• HW-201 Pulley Shaft Speed (RPM)',
+            '• HW-201 Belt Alignment (OK / MISALIGNED)',
           ],
         },
         {
           label: 'Output',
-          value: 'Sensor data is transmitted to the FastAPI backend.',
+          value: 'Sensor stream transmitted over Serial / Wi-Fi to FastAPI backend.',
         },
       ],
     },
@@ -125,18 +121,19 @@ export const SystemArchitecturePage = () => {
       ],
     },
     db: {
-      title: 'MongoDB Database Layer',
-      badge: 'REAL-TIME & HISTORICAL PERSISTENCE',
-      description: 'Stores real-time & historical sensor data, AI predictions, failure/alert records, and maintenance records in the smartbelt database.',
+      title: 'Database Layer',
+      badge: 'PERSISTENCE',
+      description: 'Stores historical and real-time conveyor sensor information, predictions, alerts and maintenance records.',
       sections: [
         {
-          label: 'Stored Collections',
+          label: 'Stores',
           items: [
-            '• Real-time & Historical Sensor Data',
-            '• AI Predictions & Health Scores',
-            '• Failure & Alert Records',
-            '• Maintenance Work Orders & Checklists',
-            '• ESP32 Devices & Credentials',
+            '• Sensor readings',
+            '• ML predictions',
+            '• Fault history',
+            '• Alerts',
+            '• Maintenance status',
+            '• Timestamps',
           ],
         },
       ],
@@ -144,15 +141,15 @@ export const SystemArchitecturePage = () => {
     react: {
       title: 'React Monitoring Dashboard',
       badge: 'USER INTERFACE',
-      description: 'Provides operators with a real-time visual interface for monitoring conveyor health, integrating AI predictions and DB logs.',
+      description: 'Provides the operator with a real-time visual interface for monitoring conveyor health, integrating AI predictions and DB logs.',
       sections: [
         {
           label: 'Displays',
           items: [
-            '• Live sensor telemetry',
+            '• Live sensor values',
             '• Equipment health score & ML predictions',
-            '• Failure & fault alerts',
-            '• Maintenance work orders',
+            '• Fault alerts',
+            '• Maintenance status',
             '• System architecture',
             '• Historical trends',
           ],
@@ -160,17 +157,18 @@ export const SystemArchitecturePage = () => {
       ],
     },
     godot: {
-      title: 'Babylon.js 3D Digital Twin',
+      title: 'Godot Digital Twin',
       badge: '3D VIRTUAL TWIN',
-      description: 'Provides a real-time 3D virtual representation of the SmartBelt conveyor system reflecting physical operational condition and anomalies.',
+      description: 'Provides a 3D virtual representation of the conveyor system and reflects the current operational and health state.',
       sections: [
         {
           label: 'Displays',
           items: [
-            '• Conveyor belt movement & speed',
-            '• Roller & motor animation',
-            '• Real-time heat & vibration color maps',
-            '• Joint rupture & misalignment alerts',
+            '• Conveyor movement',
+            '• Belt status',
+            '• Equipment condition',
+            '• Fault indication',
+            '• Sensor-related status',
           ],
         },
       ],
@@ -240,7 +238,7 @@ export const SystemArchitecturePage = () => {
                 <span className={`text-[9px] px-2 py-0.5 rounded font-mono ${
                   selectedCompId === 'sensors' ? 'bg-[#263238] text-[#EEF1F2]' : 'bg-[#EEF1F2] text-[#56656B]'
                 }`}>
-                  4 TRANSDUCERS
+                  3 SENSORS
                 </span>
               </button>
 
@@ -344,7 +342,7 @@ export const SystemArchitecturePage = () => {
                   <span className={`text-[9px] px-1.5 py-0.5 rounded mt-1 font-mono ${
                     selectedCompId === 'db' ? 'bg-[#263238] text-[#EEF1F2]' : 'bg-[#EEF1F2] text-[#56656B]'
                   }`}>
-                    MONGODB DATABASE
+                    SQLITE / MONGO
                   </span>
                 </button>
               </div>
@@ -374,12 +372,12 @@ export const SystemArchitecturePage = () => {
                 </span>
               </button>
 
-              {/* INDUSTRIAL TEAL ARROW TO DIGITAL TWIN */}
+              {/* INDUSTRIAL TEAL ARROW TO GODOT */}
               <div className="flex justify-center text-[#287F7A]">
                 <ArrowDown className="w-4 h-4 text-[#287F7A]" />
               </div>
 
-              {/* 8. Babylon.js 3D Digital Twin */}
+              {/* 8. Godot Digital Twin */}
               <button
                 onClick={() => handleCompClick('godot')}
                 className={`w-full p-4 rounded-xl border transition-colors duration-200 cursor-pointer shadow-xs flex items-center justify-between ${
@@ -390,7 +388,7 @@ export const SystemArchitecturePage = () => {
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-xl">🎮</span>
-                  <strong className="text-xs tracking-wider">Babylon.js 3D Digital Twin</strong>
+                  <strong className="text-xs tracking-wider">Godot Digital Twin</strong>
                 </div>
                 <span className={`text-[9px] px-2 py-0.5 rounded font-mono ${
                   selectedCompId === 'godot' ? 'bg-[#287F7A] text-white' : 'bg-[#EEF1F2] text-[#56656B]'
