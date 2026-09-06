@@ -711,6 +711,20 @@ def get_device_telemetry(device_id: str):
 @app.get("/api/telemetry")
 def get_telemetry():
     sensors = get_live_sensors()
+    if mongo_available and coll_readings is not None:
+        try:
+            coll_readings.insert_one({
+                "reading_id": f"READ_{uuid.uuid4().hex[:8]}",
+                "user_id": "USER_001",
+                "belt_id": "BELT_001",
+                "device_id": "SIMULATED_DEMO_NODE",
+                "timestamp": time.time(),
+                "isoTimestamp": datetime.now().isoformat(),
+                "source": "simulation",
+                "sensors": sensors,
+                "activeAnomaly": active_anomaly
+            })
+        except Exception: pass
     return {
         "conveyorId": "CV-01",
         "location": "Iron Ore Mine - Plant 2",
@@ -722,6 +736,17 @@ def get_telemetry():
 def get_ml_prediction():
     sensors = get_live_sensors()
     pred = run_random_forest_prediction(sensors)
+    if mongo_available and coll_predictions is not None:
+        try:
+            coll_predictions.insert_one({
+                "prediction_id": f"PRED_{uuid.uuid4().hex[:8]}",
+                "device_id": "SIMULATED_DEMO_NODE",
+                "timestamp": time.time(),
+                "isoTimestamp": datetime.now().isoformat(),
+                "prediction": pred,
+                "sensor_snapshot": sensors
+            })
+        except Exception: pass
     return {
         "failureProbability": pred["failureRisk"],
         "healthScore": pred["healthScore"],
