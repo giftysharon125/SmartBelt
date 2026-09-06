@@ -67,7 +67,7 @@ export const TeamPage = () => {
     {
       id: 3,
       badge: 'ECE',
-      memberName: 'Viswak Sen',
+      memberName: 'Viswaksen',
       badgeBg: 'bg-[#287F7A]/15 text-[#287F7A] border-[#287F7A]/40',
       bg: 'bg-[#FEFDFF]',
       imgBg: 'bg-[#FEFDFF]',
