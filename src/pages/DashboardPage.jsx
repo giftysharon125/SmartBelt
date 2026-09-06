@@ -172,50 +172,7 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* DATA SOURCE & LIVENESS INDICATOR BANNER */}
-      <div className="bg-white border border-[#CBD5E1] rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className={`p-3 rounded-xl shadow-xs ${
-            dataSourceMode === 'DEMO' ? 'bg-[#D97706]/15 text-[#D97706]' : 'bg-[#2E9D59]/15 text-[#2E9D59]'
-          }`}>
-            {dataSourceMode === 'DEMO' ? <Sparkles className="w-6 h-6" /> : <Cpu className="w-6 h-6" />}
-          </div>
 
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-extrabold text-[#172B3A] tracking-wide">
-                SENSOR TELEMETRY DATA SOURCE
-              </h3>
-              {getLivenessBadge()}
-            </div>
-            <p className="text-xs text-[#64748B] font-medium mt-0.5">
-              {dataSourceMode === 'DEMO' ? (
-                <>Simulated telemetry generator active. No physical hardware required for demonstration.</>
-              ) : (
-                <>Ingesting live Wi-Fi telemetry via public FastAPI backend endpoint from device <code className="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[#172B3A] font-bold">{activeDeviceId}</code>.</>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Live Key Metrics Snapshot Bar (3 Prototype Sensors) */}
-        <div className="flex flex-wrap items-center gap-3 font-mono text-xs border-t md:border-t-0 md:border-l border-[#E2E8F0] pt-3 md:pt-0 md:pl-4">
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Vibration (MPU6050)</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.vibration} mm/s</strong>
-          </div>
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Pulley Speed (HW-201)</span>
-            <strong className="text-sm text-[#172B3A] font-black">{sensors.rpm || 50} RPM</strong>
-          </div>
-          <div className="bg-[#F8FAFC] px-3 py-1.5 rounded-xl border border-[#CBD5E1]">
-            <span className="text-[10px] text-[#64748B] font-bold block uppercase">Belt Alignment (HW-201)</span>
-            <strong className={`text-sm font-black ${sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 5 ? 'text-status-critical' : 'text-status-healthy'}`}>
-              {sensors.alignment || (sensors.tracking > 5 ? 'MISALIGNED' : 'OK')}
-            </strong>
-          </div>
-        </div>
-      </div>
 
       {/* Main Grid Layout: Left Cards (ML Prediction & Sensors) + Right (Live Digital Twin) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
