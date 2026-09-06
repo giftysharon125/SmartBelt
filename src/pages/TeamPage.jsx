@@ -113,10 +113,16 @@ export const TeamPage = () => {
     {
       id: 5,
       badge: 'CSE',
+      memberName: 'Gifty Sharon',
       badgeBg: 'bg-[#263238]/20 text-[#263238] border-[#263238]/40',
+      bg: 'bg-[#FEFEFE]',
+      imgBg: 'bg-[#FEFEFE]',
+      isDark: false,
       icon: Brain,
+      image: '/team-box5-v1.png',
       title: 'ML / AI & Health Prediction',
       area: 'Machine Learning & Predictive Intelligence',
+      hasFlip: true,
       responsibilities: [
         'Process sensor data',
         'Detect abnormal behaviour',
