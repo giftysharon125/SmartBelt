@@ -125,19 +125,18 @@ export const SystemArchitecturePage = () => {
       ],
     },
     db: {
-      title: 'Database Layer',
-      badge: 'PERSISTENCE',
-      description: 'Stores historical and real-time conveyor sensor information, predictions, alerts and maintenance records.',
+      title: 'MongoDB Database Layer',
+      badge: 'REAL-TIME & HISTORICAL PERSISTENCE',
+      description: 'Stores real-time & historical sensor data, AI predictions, failure/alert records, and maintenance records in the smartbelt database.',
       sections: [
         {
-          label: 'Stores',
+          label: 'Stored Collections',
           items: [
-            '• Sensor readings',
-            '• ML predictions',
-            '• Fault history',
-            '• Alerts',
-            '• Maintenance status',
-            '• Timestamps',
+            '• Real-time & Historical Sensor Data',
+            '• AI Predictions & Health Scores',
+            '• Failure & Alert Records',
+            '• Maintenance Work Orders & Checklists',
+            '• ESP32 Devices & Credentials',
           ],
         },
       ],
@@ -145,15 +144,15 @@ export const SystemArchitecturePage = () => {
     react: {
       title: 'React Monitoring Dashboard',
       badge: 'USER INTERFACE',
-      description: 'Provides the operator with a real-time visual interface for monitoring conveyor health, integrating AI predictions and DB logs.',
+      description: 'Provides operators with a real-time visual interface for monitoring conveyor health, integrating AI predictions and DB logs.',
       sections: [
         {
           label: 'Displays',
           items: [
-            '• Live sensor values',
+            '• Live sensor telemetry',
             '• Equipment health score & ML predictions',
-            '• Fault alerts',
-            '• Maintenance status',
+            '• Failure & fault alerts',
+            '• Maintenance work orders',
             '• System architecture',
             '• Historical trends',
           ],
@@ -161,18 +160,17 @@ export const SystemArchitecturePage = () => {
       ],
     },
     godot: {
-      title: 'Godot Digital Twin',
+      title: 'Babylon.js 3D Digital Twin',
       badge: '3D VIRTUAL TWIN',
-      description: 'Provides a 3D virtual representation of the conveyor system and reflects the current operational and health state.',
+      description: 'Provides a real-time 3D virtual representation of the SmartBelt conveyor system reflecting physical operational condition and anomalies.',
       sections: [
         {
           label: 'Displays',
           items: [
-            '• Conveyor movement',
-            '• Belt status',
-            '• Equipment condition',
-            '• Fault indication',
-            '• Sensor-related status',
+            '• Conveyor belt movement & speed',
+            '• Roller & motor animation',
+            '• Real-time heat & vibration color maps',
+            '• Joint rupture & misalignment alerts',
           ],
         },
       ],
@@ -346,7 +344,7 @@ export const SystemArchitecturePage = () => {
                   <span className={`text-[9px] px-1.5 py-0.5 rounded mt-1 font-mono ${
                     selectedCompId === 'db' ? 'bg-[#263238] text-[#EEF1F2]' : 'bg-[#EEF1F2] text-[#56656B]'
                   }`}>
-                    SQLITE / MONGO
+                    MONGODB DATABASE
                   </span>
                 </button>
               </div>
@@ -376,12 +374,12 @@ export const SystemArchitecturePage = () => {
                 </span>
               </button>
 
-              {/* INDUSTRIAL TEAL ARROW TO GODOT */}
+              {/* INDUSTRIAL TEAL ARROW TO DIGITAL TWIN */}
               <div className="flex justify-center text-[#287F7A]">
                 <ArrowDown className="w-4 h-4 text-[#287F7A]" />
               </div>
 
-              {/* 8. Godot Digital Twin */}
+              {/* 8. Babylon.js 3D Digital Twin */}
               <button
                 onClick={() => handleCompClick('godot')}
                 className={`w-full p-4 rounded-xl border transition-colors duration-200 cursor-pointer shadow-xs flex items-center justify-between ${
@@ -392,7 +390,7 @@ export const SystemArchitecturePage = () => {
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-xl">🎮</span>
-                  <strong className="text-xs tracking-wider">Godot Digital Twin</strong>
+                  <strong className="text-xs tracking-wider">Babylon.js 3D Digital Twin</strong>
                 </div>
                 <span className={`text-[9px] px-2 py-0.5 rounded font-mono ${
                   selectedCompId === 'godot' ? 'bg-[#287F7A] text-white' : 'bg-[#EEF1F2] text-[#56656B]'
