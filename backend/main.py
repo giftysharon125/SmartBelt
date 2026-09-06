@@ -186,10 +186,89 @@ coll_readings = None
 coll_checklist = None
 coll_alerts = None
 coll_history = None
+coll_architecture = None
+coll_predictions = None
+coll_work_orders = None
+
+DEFAULT_SYSTEM_ARCHITECTURE = {
+    "system_name": "SmartBelt — CSE Technical Architecture",
+    "version": "2.0.0",
+    "description": "End-to-End Industrial Conveyor Health Monitoring, Edge Data Ingestion, Random Forest AI Inference & 3D Digital Twin System",
+    "database": "smartbelt",
+    "layers": [
+        {
+            "layer": "Layer 1: Sensor & Hardware Layer",
+            "components": ["Tri-axial Accelerometers (MPU6050)", "DS18B20 Temperature Sensors", "Optical Tachometers", "ACS712 Current Transducers"],
+            "protocol": "Analog & Digital GPIO / I2C / 1-Wire"
+        },
+        {
+            "layer": "Layer 2: Edge Computing & Communication",
+            "components": ["ESP32 Microcontroller Edge Nodes", "Arduino C++ / PlatformIO Firmware"],
+            "protocol": "HTTP REST POST JSON with X-Device-Token Header Authentication"
+        },
+        {
+            "layer": "Layer 3: Backend Ingestion & Processing",
+            "components": ["FastAPI Application Server", "Uvicorn ASGI Server", "Pydantic Schema Validation"],
+            "protocol": "Asynchronous REST Endpoints"
+        },
+        {
+            "layer": "Layer 4: Data Storage (MongoDB Atlas / Local)",
+            "components": ["MongoDB Database 'smartbelt'"],
+            "collections": [
+                "users", 
+                "conveyor_belts", 
+                "esp32_devices", 
+                "sensor_readings", 
+                "ai_predictions", 
+                "alerts", 
+                "maintenance_history", 
+                "maintenance_checklist", 
+                "work_orders", 
+                "system_architecture"
+            ]
+        },
+        {
+            "layer": "Layer 5: Machine Learning Engine",
+            "components": ["Random Forest Classifier & Regressor", "Remaining Useful Life (RUL) Estimator"],
+            "outputs": ["Health Score (0-100%)", "Failure Risk Level", "Primary Failure Driver", "RUL Hours"]
+        },
+        {
+            "layer": "Layer 6: Interactive 3D Digital Twin & Frontend",
+            "components": ["React 18 SPA", "Babylon.js 3D Physics & Canvas Engine", "Recharts Analytics", "Tailwind CSS"],
+            "features": ["Real-time 3D Conveyor Motion", "Thermal & Vibration Particle Visualization", "Live Alert Work Order Dispatch"]
+        }
+    ],
+    "created_at": time.time()
+}
+
+DEFAULT_WORK_ORDERS = [
+    {
+        "work_order_id": "WO-901",
+        "title": "Splice Joint #3 Ultrasonic Inspection & Vulcanization",
+        "priority": "HIGH",
+        "assignedTo": "Senior Splice Specialist",
+        "targetComponent": "Splice #3",
+        "dueDate": "2026-09-08",
+        "estimatedDuration": "3.5 Hours",
+        "status": "SCHEDULED",
+        "created_at": time.time()
+    },
+    {
+        "work_order_id": "WO-902",
+        "title": "Drive Motor Bearing Re-alignment & Thermal Audit",
+        "priority": "MEDIUM",
+        "assignedTo": "Mechanical Lead",
+        "targetComponent": "Primary Drive Motor",
+        "dueDate": "2026-09-10",
+        "estimatedDuration": "2.0 Hours",
+        "status": "IN_PROGRESS",
+        "created_at": time.time()
+    }
+]
 
 def init_mongo_connection(uri_candidate: str = ""):
     global mongo_available, current_mongo_uri, db_instance
-    global coll_users, coll_belts, coll_devices, coll_readings, coll_checklist, coll_alerts, coll_history
+    global coll_users, coll_belts, coll_devices, coll_readings, coll_checklist, coll_alerts, coll_history, coll_architecture, coll_predictions, coll_work_orders
     global checklist_db, maintenance_history_db, users_db, belts_db, devices_db
 
     candidates = []
@@ -219,6 +298,9 @@ def init_mongo_connection(uri_candidate: str = ""):
                 coll_checklist = db["maintenance_checklist"]
                 coll_alerts = db["alerts"]
                 coll_history = db["maintenance_history"]
+                coll_architecture = db["system_architecture"]
+                coll_predictions = db["ai_predictions"]
+                coll_work_orders = db["work_orders"]
 
                 current_mongo_uri = uri
                 mongo_available = True
@@ -230,6 +312,12 @@ def init_mongo_connection(uri_candidate: str = ""):
                     coll_belts.insert_one(dict(DEFAULT_BELT))
                 if coll_devices.count_documents({}) == 0:
                     coll_devices.insert_one(dict(DEFAULT_DEVICE))
+
+                if coll_architecture.count_documents({}) == 0:
+                    coll_architecture.insert_one(dict(DEFAULT_SYSTEM_ARCHITECTURE))
+
+                if coll_work_orders.count_documents({}) == 0:
+                    coll_work_orders.insert_many([dict(w) for w in DEFAULT_WORK_ORDERS])
 
                 if coll_checklist.count_documents({}) == 0:
                     coll_checklist.insert_many([dict(item) for item in DEFAULT_CHECKLIST])
@@ -743,6 +831,36 @@ def set_anomaly(req: AnomalyRequest):
     else:
         active_anomaly = req.anomaly_type
     return {"status": "success", "activeAnomaly": active_anomaly}
+
+@app.get("/api/architecture")
+def get_system_architecture():
+    global mongo_available, coll_architecture
+    if mongo_available and coll_architecture is not None:
+        try:
+            doc = coll_architecture.find_one({}, {"_id": 0})
+            if doc: return doc
+        except Exception: pass
+    return DEFAULT_SYSTEM_ARCHITECTURE
+
+@app.get("/api/work-orders")
+def get_work_orders():
+    global mongo_available, coll_work_orders
+    if mongo_available and coll_work_orders is not None:
+        try:
+            docs = list(coll_work_orders.find({}, {"_id": 0}))
+            if docs: return docs
+        except Exception: pass
+    return DEFAULT_WORK_ORDERS
+
+@app.get("/api/predictions/history")
+def get_predictions_history():
+    global mongo_available, coll_predictions
+    if mongo_available and coll_predictions is not None:
+        try:
+            docs = list(coll_predictions.find({}, {"_id": 0}).sort("timestamp", -1).limit(50))
+            if docs: return docs
+        except Exception: pass
+    return []
 
 if __name__ == "__main__":
     import uvicorn
