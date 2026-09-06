@@ -1,12 +1,17 @@
 /*
  * ==============================================================================
- * SmartBelt — ESP32 Industrial IoT Firmware Template (PlatformIO / C++)
+ * SmartBelt — Industrial Conveyor Monitoring ESP32 Firmware (PlatformIO / Arduino)
  * ==============================================================================
  * 
- * Hardware: ESP32-WROOM-32 (or ESP32-S3)
- * Communications: Wi-Fi (IEEE 802.11 b/g/n) -> HTTP POST JSON API
- * Target Backend: FastAPI Ingestion Endpoint (/api/devices/{DEVICE_ID}/sensor-data)
- * Authentication: Custom X-Device-Token Header
+ * Target Board : ESP32 Dev Module (esp32dev)
+ * Framework    : Arduino C++
+ * Dependencies : ArduinoJson (^6.21.3), WiFi, HTTPClient
+ * 
+ * Features:
+ *  - Dual Mode: Hardware Real Sensor Reads vs Realistic Dynamic Simulation Mode
+ *  - Non-blocking telemetry loop with interval timing
+ *  - Wi-Fi liveness auto-reconnect logic
+ *  - Configurable HTTP REST JSON payload with X-Device-Token authorization header
  * ==============================================================================
  */
 
@@ -15,142 +20,286 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-// Forward declarations for C++
-void sendSensorDataPayload();
+// ==============================================================================
+// 1. CONFIGURATION & CONFIGURABLE FLAGS
+// ==============================================================================
 
-// --- USER CONFIGURATION ---
+// Set SIMULATION_MODE to true when physical sensors are disconnected/testing.
+// Set SIMULATION_MODE to false when physical sensors are wired to GPIO pins.
+#define SIMULATION_MODE true
+
+// Wi-Fi Access Point Credentials
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// FastAPI Public Backend Base URL (Use your machine's local IP, e.g. http://192.168.1.100:8005)
-const char* BACKEND_URL   = "http://192.168.1.100:8005";
+// FastAPI Public Backend Ingestion URL (Use PC local IP, e.g. http://192.168.1.100:8005)
+const char* serverUrl     = "http://192.168.1.100:8005";
 
-// Device Credentials (Generated from SmartBelt "Connect ESP32" Modal)
+// Device Credentials (Generated from SmartBelt Dashboard -> "Connect ESP32" Modal)
 const char* DEVICE_ID     = "ESP32_A82F91";
-const char* DEVICE_TOKEN  = "token_sec_984f1a23b5c6";
+const char* DEVICE_TOKEN  = "token_sec_995c735d4fa5427aa34177d61eb6ba92";
 
-// Sampling & Telemetry Interval (milliseconds)
+// Telemetry Transmission Interval (milliseconds)
 const unsigned long TELEMETRY_INTERVAL_MS = 2000;
 unsigned long lastTelemetryTime = 0;
 
-// --- HARDWARE SENSOR READ FUNCTIONS (PLACEHOLDERS) ---
+// Dynamic simulation variables (gradual realistic variation)
+float simTemp      = 45.2f;
+float simVib       = 0.32f;
+float simLoad      = 68.4f;
+float simSpeed     = 1.45f;
+float simCurrent   = 2.80f;
+float simAngleTime = 0.0f;
 
-// TODO: Replace with physical DS18B20 1-Wire temperature sensor pin reading
-float readTemperature() {
-  float baseTemp = 42.5;
-  float randomNoise = (random(-10, 15) / 10.0);
-  return baseTemp + randomNoise;
-}
+// ==============================================================================
+// 2. FORWARD DECLARATIONS
+// ==============================================================================
+void initWiFi();
+void readSensors(float &temp, float &vib, float &load, float &speed, float &current);
+void updateSimulationValues(float &temp, float &vib, float &load, float &speed, float &current);
+float readTemperature();
+float readVibration();
+float readLoad();
+float readBeltSpeed();
+float readMotorCurrent();
+void sendDataToBackend(float temp, float vib, float load, float speed, float current);
 
-// TODO: Replace with physical MPU6050 I2C accelerometer RMS vibration calculation (mm/s)
-float readVibration() {
-  float baseVib = 1.8;
-  float randomNoise = (random(-3, 5) / 10.0);
-  return max(0.5f, baseVib + randomNoise);
-}
-
-// TODO: Replace with physical IR Tachometer / Hall Effect pulse counter for RPM
-float readRPM() {
-  int randomNoise = random(-15, 15);
-  return 1450.0 + randomNoise;
-}
-
-// TODO: Replace with physical ACS712 / SCT-013 Current Transducer ADC reading (Amperes)
-float readCurrent() {
-  float randomNoise = (random(-2, 3) / 10.0);
-  return 3.8 + randomNoise;
-}
-
-// --- SETUP INITIALIZATION ---
+// ==============================================================================
+// 3. SETUP INITIALIZATION
+// ==============================================================================
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
   Serial.println();
-  Serial.println("=================================================");
-  Serial.println("   SmartBelt ESP32 IoT Node Initializing         ");
-  Serial.println("=================================================");
+  Serial.println("========================================");
+  Serial.println(" SMARTBELT CONVEYOR MONITORING ESP32");
+  Serial.println("========================================");
 
-  Serial.print("[Wi-Fi] Connecting to network: ");
+  #if SIMULATION_MODE
+    Serial.println("Mode         : [SIMULATED DEMO MODE]");
+  #else
+    Serial.println("Mode         : [REAL PHYSICAL SENSORS]");
+  #endif
+
+  initWiFi();
+}
+
+// ==============================================================================
+// 4. MAIN EXECUTION LOOP
+// ==============================================================================
+void loop() {
+  // Ensure Wi-Fi connection is maintained
+  if (WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastReconnectAttempt = 0;
+    if (millis() - lastReconnectAttempt > 5000) {
+      lastReconnectAttempt = millis();
+      Serial.println("[Wi-Fi] Warning: Connection lost. Attempting background reconnect...");
+      WiFi.reconnect();
+    }
+  }
+
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastTelemetryTime >= TELEMETRY_INTERVAL_MS) {
+    lastTelemetryTime = currentMillis;
+
+    float temp = 0.0f, vib = 0.0f, load = 0.0f, speed = 0.0f, current = 0.0f;
+
+    // Read sensor values (simulation or physical hardware)
+    readSensors(temp, vib, load, speed, current);
+
+    // Print values to Serial Monitor
+    Serial.println();
+    Serial.println("========================================");
+    Serial.println(" SMARTBELT CONVEYOR MONITORING ESP32");
+    Serial.println("========================================");
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print("WiFi Status  : Connected (");
+      Serial.print(WiFi.localIP());
+      Serial.println(")");
+    } else {
+      Serial.println("WiFi Status  : DISCONNECTED (Offline)");
+    }
+
+    #if SIMULATION_MODE
+      Serial.println("Sensor Mode  : [SIMULATED]");
+    #else
+      Serial.println("Sensor Mode  : [REAL SENSOR]");
+    #endif
+
+    Serial.println();
+    Serial.print("Temperature  : "); Serial.print(temp, 1); Serial.println(" °C");
+    Serial.print("Vibration    : "); Serial.print(vib, 2); Serial.println(" mm/s");
+    Serial.print("Load Weight  : "); Serial.print(load, 1); Serial.println(" kg");
+    Serial.print("Belt Speed   : "); Serial.print(speed, 2); Serial.println(" m/s");
+    Serial.print("Motor Current: "); Serial.print(current, 1); Serial.println(" A");
+
+    // Transmit telemetry payload to backend API
+    sendDataToBackend(temp, vib, load, speed, current);
+
+    Serial.println("----------------------------------------");
+  }
+}
+
+// ==============================================================================
+// 5. WI-FI INITIALIZATION
+// ==============================================================================
+void initWiFi() {
+  Serial.print("WiFi Network : Connecting to ");
   Serial.println(WIFI_SSID);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
+  while (WiFi.status() != WL_CONNECTED && attempts < 15) {
+    delay(400);
     Serial.print(".");
     attempts++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
-    Serial.print("[Wi-Fi] Connected successfully! IP Address: ");
+    Serial.print("WiFi Status  : Connected successfully! IP: ");
     Serial.println(WiFi.localIP());
   } else {
     Serial.println();
-    Serial.println("[Wi-Fi] Connection failed! Retrying in loop...");
+    Serial.println("WiFi Status  : Connection timeout. Continuing in offline mode...");
   }
 }
 
-// --- MAIN LOOP ---
-void loop() {
+// ==============================================================================
+// 6. SENSOR ARCHITECTURE & READINGS
+// ==============================================================================
+void readSensors(float &temp, float &vib, float &load, float &speed, float &current) {
+  #if SIMULATION_MODE
+    updateSimulationValues(temp, vib, load, speed, current);
+  #else
+    temp    = readTemperature();
+    vib     = readVibration();
+    load    = readLoad();
+    speed   = readBeltSpeed();
+    current = readMotorCurrent();
+  #endif
+}
+
+// Realistic simulation generator (gradually changing physical dynamics)
+void updateSimulationValues(float &temp, float &vib, float &load, float &speed, float &current) {
+  simAngleTime += 0.15f;
+
+  // Temperature drifts with thermal inertia around 45.2°C ± 1.5°C
+  simTemp += (sin(simAngleTime * 0.2f) * 0.12f) + (random(-10, 10) / 100.0f);
+  simTemp = max(38.0f, min(65.0f, simTemp));
+
+  // Vibration oscillates realistically around 0.32 mm/s
+  simVib = 0.32f + (sin(simAngleTime * 0.8f) * 0.08f) + (random(-5, 5) / 100.0f);
+  simVib = max(0.10f, min(3.50f, simVib));
+
+  // Load varies smoothly with ore payload conveyor weight around 68.4 kg
+  simLoad = 68.4f + (cos(simAngleTime * 0.3f) * 3.2f) + (random(-15, 15) / 10.0f);
+  simLoad = max(20.0f, min(120.0f, simLoad));
+
+  // Belt speed fluctuates slightly around nominal 1.45 m/s
+  simSpeed = 1.45f + (sin(simAngleTime * 0.1f) * 0.03f);
+
+  // Motor current responds to load variations around 2.8 A
+  simCurrent = 2.80f + (simLoad - 68.4f) * 0.02f + (random(-5, 5) / 100.0f);
+  simCurrent = max(1.0f, min(8.0f, simCurrent));
+
+  temp    = simTemp;
+  vib     = simVib;
+  load    = simLoad;
+  speed   = simSpeed;
+  current = simCurrent;
+}
+
+// ------------------------------------------------------------------------------
+// PHYSICAL SENSOR READ FUNCTIONS (REPLACE WITH YOUR HARDWARE LIBRARY CALLS)
+// ------------------------------------------------------------------------------
+
+float readTemperature() {
+  // TODO: Insert DS18B20 1-Wire or Thermocouple hardware read call
+  // Example: return dht.readTemperature();
+  return 45.2f;
+}
+
+float readVibration() {
+  // TODO: Insert MPU6050 Accelerometer RMS calculation
+  // Example: return mpu.getAccelerationMagnitude();
+  return 0.32f;
+}
+
+float readLoad() {
+  // TODO: Insert Load Cell / HX711 strain gauge read call
+  // Example: return scale.get_units(5);
+  return 68.4f;
+}
+
+float readBeltSpeed() {
+  // TODO: Insert Optical Tachometer / Hall Effect pulse counter speed calculation
+  // Example: return calculateSpeedFromPulses();
+  return 1.45f;
+}
+
+float readMotorCurrent() {
+  // TODO: Insert ACS712 / SCT-013 current sensor ADC reading
+  // Example: return acs712.getCurrentAC();
+  return 2.8f;
+}
+
+// ==============================================================================
+// 7. BACKEND COMMUNICATION (HTTP POST REST API)
+// ==============================================================================
+void sendDataToBackend(float temp, float vib, float load, float speed, float current) {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[Wi-Fi] Reconnecting...");
-    WiFi.disconnect();
-    WiFi.reconnect();
-    delay(3000);
+    Serial.println("Sending data to backend...");
+    Serial.println("HTTP Status  : Skipped (Wi-Fi Offline)");
     return;
   }
 
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastTelemetryTime >= TELEMETRY_INTERVAL_MS) {
-    lastTelemetryTime = currentMillis;
-    sendSensorDataPayload();
-  }
-}
+  // Construct Ingestion Endpoint URL
+  String endpointUrl = String(serverUrl) + "/api/devices/" + String(DEVICE_ID) + "/sensor-data";
 
-// --- TRANSMIT SENSOR TELEMETRY VIA HTTP POST ---
-void sendSensorDataPayload() {
-  float temperature = readTemperature();
-  float vibration   = readVibration();
-  float rpm         = readRPM();
-  float current     = readCurrent();
-
+  // Build JSON Payload
   StaticJsonDocument<256> doc;
-  doc["temperature"] = temperature;
-  doc["vibration"]   = vibration;
-  doc["rpm"]         = rpm;
-  doc["current"]     = current;
-  doc["tracking"]    = 1.2;
-  doc["tension"]     = 142;
+  doc["deviceId"]     = DEVICE_ID;
+  doc["temperature"]  = round(temp * 10.0f) / 10.0f;
+  doc["vibration"]    = round(vib * 100.0f) / 100.0f;
+  doc["load"]         = round(load * 10.0f) / 10.0f;
+  doc["beltSpeed"]    = round(speed * 100.0f) / 100.0f;
+  doc["motorCurrent"] = round(current * 10.0f) / 10.0f;
+  doc["rpm"]          = 1450;
+  doc["tracking"]     = 1.2;
+  doc["tension"]      = 142;
+  doc["timestamp"]    = millis() / 1000;
 
   String jsonString;
   serializeJson(doc, jsonString);
 
-  String endpointUrl = String(BACKEND_URL) + "/api/devices/" + String(DEVICE_ID) + "/sensor-data";
-
-  Serial.print("[HTTP POST] Sending payload to ");
-  Serial.println(endpointUrl);
-  Serial.println(jsonString);
+  Serial.println();
+  Serial.println("Sending data to backend...");
 
   HTTPClient http;
   http.begin(endpointUrl);
+  http.setTimeout(3000); // 3-second non-blocking HTTP timeout
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Token", DEVICE_TOKEN);
 
   int httpResponseCode = http.POST(jsonString);
 
   if (httpResponseCode > 0) {
-    String responseString = http.getString();
-    Serial.print("[HTTP Success] Status Code: ");
-    Serial.println(httpResponseCode);
-    Serial.print("[Response] ");
-    Serial.println(responseString);
+    Serial.print("HTTP Status  : ");
+    Serial.print(httpResponseCode);
+    if (httpResponseCode == 200 || httpResponseCode == 201) {
+      Serial.println(" (OK - Telemetry Ingested)");
+    } else {
+      Serial.println(" (Server Warning)");
+    }
   } else {
-    Serial.print("[HTTP Error] Ingestion Failed. Code: ");
-    Serial.println(httpResponseCode);
+    Serial.print("HTTP Status  : Error (Code ");
+    Serial.print(httpResponseCode);
+    Serial.println(" - Backend Unreachable)");
   }
 
   http.end();

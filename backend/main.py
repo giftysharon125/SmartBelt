@@ -78,9 +78,14 @@ class Esp32SensorPayload(BaseModel):
     vibration: float
     rpm: Optional[float] = 1450.0
     current: Optional[float] = 3.8
+    motorCurrent: Optional[float] = None
+    load: Optional[float] = 68.4
+    beltSpeed: Optional[float] = None
+    belt_speed_m_s: Optional[float] = 1.45
     tracking: Optional[float] = 1.2
-    load: Optional[float] = 82.0
     tension: Optional[float] = 142.0
+    deviceId: Optional[str] = None
+    timestamp: Optional[float] = None
 
 # ==========================================
 # DATABASE DEFAULTS & IN-MEMORY COLLECTIONS
@@ -160,7 +165,7 @@ DEFAULT_DEVICE = {
     "user_id": "USER_001",
     "belt_id": "BELT_001",
     "device_name": "ESP32 Edge Node #1",
-    "device_token": "token_sec_984f1a23b5c6",
+    "device_token": "token_sec_995c735d4fa5427aa34177d61eb6ba92",
     "status": "DEMO_MODE",
     "last_seen_at": None,
     "created_at": time.time()
@@ -639,14 +644,18 @@ def ingest_esp32_sensor_data(
         try: coll_devices.update_one({"device_id": device_id}, {"$set": {"last_seen_at": now_ts, "status": "ONLINE"}})
         except Exception: pass
 
+    current_val = payload.motorCurrent if payload.motorCurrent is not None else payload.current
+    speed_val = payload.beltSpeed if payload.beltSpeed is not None else payload.belt_speed_m_s
+
     sensor_dict = {
         "temperature": payload.temperature,
         "vibration": payload.vibration,
-        "rpm": payload.rpm,
-        "current": payload.current,
-        "load": payload.load if payload.load is not None else round((payload.current / 4.5) * 100, 1),
-        "tracking": payload.tracking,
-        "tension": payload.tension,
+        "rpm": payload.rpm if payload.rpm is not None else 1450.0,
+        "current": current_val if current_val is not None else 3.8,
+        "load": payload.load if payload.load is not None else 68.4,
+        "speed": speed_val if speed_val is not None else 1.45,
+        "tracking": payload.tracking if payload.tracking is not None else 1.2,
+        "tension": payload.tension if payload.tension is not None else 142.0,
     }
 
     # Run Random Forest Prediction
