@@ -32,8 +32,8 @@
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// FastAPI Public Backend Ingestion URL (Use PC local IP, e.g. http://192.168.1.100:8005)
-const char* serverUrl     = "http://192.168.1.100:8005";
+// FastAPI Public Backend Ingestion URL (Laptop's Active IPv4 Address)
+const char* serverUrl     = "http://10.21.19.154:8005";
 
 // Device Credentials (Generated from SmartBelt Dashboard -> "Connect ESP32" Modal)
 const char* DEVICE_ID     = "ESP32_A82F91";
