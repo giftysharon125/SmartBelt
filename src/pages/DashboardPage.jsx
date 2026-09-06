@@ -109,30 +109,10 @@ export const DashboardPage = () => {
   return (
     <div className="space-y-6">
       
-      {/* DATA SOURCE & LIVENESS INDICATOR BANNER */}
-      <div className="bg-white border border-[#CBD5E1] rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className={`p-3 rounded-xl shadow-xs ${
-            dataSourceMode === 'DEMO' ? 'bg-[#D97706]/15 text-[#D97706]' : 'bg-[#2E9D59]/15 text-[#2E9D59]'
-          }`}>
-            {dataSourceMode === 'DEMO' ? <Sparkles className="w-6 h-6" /> : <Cpu className="w-6 h-6" />}
-          </div>
-
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-extrabold text-[#172B3A] tracking-wide">
-                SENSOR TELEMETRY DATA SOURCE
-              </h3>
-              {getLivenessBadge()}
-            </div>
-            <p className="text-xs text-[#64748B] font-medium mt-0.5">
-              {dataSourceMode === 'DEMO' ? (
-                <>Simulated telemetry generator active. No physical hardware required for demonstration.</>
-              ) : (
-                <>Ingesting live Wi-Fi telemetry via public FastAPI backend endpoint from device <code className="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-[#172B3A] font-bold">{activeDeviceId}</code>.</>
-              )}
-            </p>
-          </div>
+      {/* LIVENESS INDICATOR & METRICS SNAPSHOT BANNER */}
+      <div className="bg-white border border-[#CBD5E1] rounded-2xl p-3.5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          {getLivenessBadge()}
         </div>
 
         {/* Live Key Metrics Snapshot Bar (3 Prototype Sensors) */}

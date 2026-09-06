@@ -99,15 +99,6 @@ export const Header = ({ activeTab, setActiveTab }) => {
             </button>
           </div>
 
-          {/* Connect ESP32 Button */}
-          <button
-            onClick={() => setIsConnectModalOpen(true)}
-            className="px-3.5 py-1.5 bg-[#123047] hover:bg-[#1C3D5A] text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <Cpu className="w-4 h-4 text-[#159A9C]" />
-            <span>Connect ESP32</span>
-          </button>
-
           {/* Live Clock & Date */}
           <div className="flex items-center space-x-2 text-[#263238] bg-[#EEF1F2] px-3 py-1.5 rounded-xl border border-[#B4BEC2] font-mono shadow-2xs">
             <Clock className="w-4 h-4 text-[#9A5B3D]" />
