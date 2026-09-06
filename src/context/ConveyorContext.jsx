@@ -6,12 +6,12 @@ export const ConveyorProvider = ({ children }) => {
   // Active Anomaly State: null | 'JOINT_RUPTURE' | 'MISALIGNMENT_SPIKE' | 'MOTOR_OVERHEAT' | 'HEAVY_OVERLOAD'
   const [activeAnomaly, setActiveAnomaly] = useState(null);
 
-  // DATA SOURCE MODE: 'DEMO' (default simulated stream) | 'LIVE_ESP32' (real ESP32 IoT API)
-  const [dataSourceMode, setDataSourceMode] = useState('DEMO');
+  // DATA SOURCE MODE: 'LIVE_ESP32' (real ESP32 IoT API)
+  const [dataSourceMode, setDataSourceMode] = useState('LIVE_ESP32');
   const [activeDeviceId, setActiveDeviceId] = useState('ESP32_A82F91');
   const [activeBeltId, setActiveBeltId] = useState('BELT_001');
-  const [sensorSource, setSensorSource] = useState('simulation'); // 'simulation' | 'esp32'
-  const [deviceStatus, setDeviceStatus] = useState('DEMO_MODE');   // 'DEMO_MODE' | 'ONLINE' | 'NO_RECENT_DATA' | 'OFFLINE'
+  const [sensorSource, setSensorSource] = useState('esp32');
+  const [deviceStatus, setDeviceStatus] = useState('ONLINE');
   const [lastSeenSecondsAgo, setLastSeenSecondsAgo] = useState(0);
 
   // Conveyor System Metadata
@@ -29,19 +29,15 @@ export const ConveyorProvider = ({ children }) => {
     motorPowerKw: 65.4,
   });
 
-  // Current Live Sensor Telemetry (7 IoT Monitored Parameters)
+  // Current Live Sensor Telemetry (3 Prototype Sensors: Vibration, Speed, Alignment)
   const [sensors, setSensors] = useState({
-    vibration: 1.8,      // mm/s
-    temperature: 42.5,   // °C
-    tracking: 1.2,       // mm offset
-    acoustic: 61,        // dB
-    load: 82,            // % load
-    speed: 3.8,          // m/s
-    tension: 142,        // kN
-    rpm: 1450,           // RPM
-    current: 3.8,        // Current A
-    sensorsOnline: 7,
-    totalSensors: 7,
+    vibration: 1.8,      // mm/s (MPU6050 Accel/Gyro)
+    speed: 1.57,         // m/s (HW-201 IR Pulley Encoder, 50 RPM * 0.0314)
+    rpm: 50,             // RPM (HW-201 IR Pulley Encoder - Max motor speed: 60 RPM)
+    tracking: 1.2,       // mm offset (HW-201 IR Alignment Detector)
+    alignment: 'OK',     // 'OK' | 'MISALIGNED'
+    sensorsOnline: 3,
+    totalSensors: 3,
   });
 
   // Joint Splice Condition Details (1 Main Splice Joint J-03)
@@ -49,23 +45,21 @@ export const ConveyorProvider = ({ children }) => {
     { id: 'J-03', location: '890m (Impact Zone)', type: 'Vulcanized Finger Splice', status: 'HEALTHY', strain: 2.8, microCracks: 'Minor Edge Wear', lastInspected: 'Yesterday' }
   ]);
 
-  // Telemetry History Buffer (30 Data Points)
+  // Telemetry History Buffer (30 Data Points for 3 Prototype Sensors)
   const [history, setHistory] = useState(() => {
     const now = new Date();
     const initial = [];
     for (let i = 29; i >= 0; i--) {
       const t = new Date(now.getTime() - i * 60 * 1000);
+      const simRpm = Math.round(48 + Math.random() * 4);
       initial.push({
         time: t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         vibration: Number((1.7 + Math.random() * 0.4).toFixed(1)),
-        temperature: Math.round(41 + Math.random() * 4),
-        tracking: Number((0.8 + Math.random() * 1.0).toFixed(1)),
-        acoustic: Math.round(59 + Math.random() * 4),
-        load: Math.round(80 + Math.random() * 5),
-        tension: Math.round(140 + Math.random() * 5),
-        rpm: 1450,
-        current: 3.8,
-        healthScore: 94,
+        speed: Number((simRpm * 0.0314).toFixed(2)),
+        rpm: simRpm,
+        tracking: Number((0.8 + Math.random() * 0.8).toFixed(1)),
+        alignment: 'OK',
+        healthScore: 95,
       });
     }
     return initial;
@@ -227,17 +221,11 @@ export const ConveyorProvider = ({ children }) => {
     if (sensors.vibration > 6.0) baseHealth -= 40;
     else if (sensors.vibration > 3.0) baseHealth -= 18;
 
-    if (sensors.temperature > 75) baseHealth -= 35;
-    else if (sensors.temperature > 60) baseHealth -= 16;
-
-    if (Math.abs(sensors.tracking) > 7.0) baseHealth -= 35;
+    if (Math.abs(sensors.tracking) > 7.0 || sensors.alignment === 'MISALIGNED') baseHealth -= 35;
     else if (Math.abs(sensors.tracking) > 4.0) baseHealth -= 18;
 
-    if (sensors.tension > 180 || sensors.tension < 100) baseHealth -= 30;
-    else if (sensors.tension > 165 || sensors.tension < 115) baseHealth -= 12;
-
-    if (sensors.load > 115) baseHealth -= 25;
-    else if (sensors.load > 90) baseHealth -= 12;
+    if (sensors.rpm < 30) baseHealth -= 30;
+    else if (sensors.rpm < 40) baseHealth -= 12;
 
     baseHealth = Math.max(12, Math.min(99, Math.round(baseHealth)));
     const riskProb = 100 - baseHealth;
@@ -261,7 +249,7 @@ export const ConveyorProvider = ({ children }) => {
 
   const mlMetrics = calculateMlMetrics();
 
-  // Automatic Real-Time Threshold Monitoring & Alert Engine
+  // Automatic Real-Time Threshold Monitoring & Alert Engine (3 Prototype Sensors)
   useEffect(() => {
     const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const newAlertsToAdd = [];
@@ -303,68 +291,36 @@ export const ConveyorProvider = ({ children }) => {
       });
     }
 
-    if (sensors.temperature > 75 && !hasActiveAlert('Motor Temperature Overheat')) {
-      newAlertsToAdd.push({
-        id: `ALT-${Math.floor(2000 + Math.random() * 8000)}`,
-        severity: 'CRITICAL',
-        title: 'Motor Temperature Overheat',
-        equipment: 'Primary Drive Motor M-01',
-        sensor: 'DS18B20 Temp Probe',
-        currentValue: `${sensors.temperature} °C`,
-        normalRange: '< 60 °C',
-        threshold: '75 °C',
-        timestamp: timestampStr,
-        description: 'Drive motor stator winding temperature exceeded critical safety limit.',
-        recommendedAction: 'Check cooling fan airflow and reduce conveyor feed rate.',
-        status: 'ACTIVE',
-      });
-    } else if (sensors.temperature > 60 && sensors.temperature <= 75 && !hasActiveAlert('Bearing Temperature Elevated')) {
-      newAlertsToAdd.push({
-        id: `ALT-${Math.floor(2000 + Math.random() * 8000)}`,
-        severity: 'WARNING',
-        title: 'Bearing Temperature Elevated',
-        equipment: 'Head Pulley Bearing',
-        sensor: 'DS18B20 Temp Probe',
-        currentValue: `${sensors.temperature} °C`,
-        normalRange: '< 60 °C',
-        threshold: '60 °C',
-        timestamp: timestampStr,
-        description: 'Bearing operating temperature elevated above baseline.',
-        recommendedAction: 'Check synthetic grease lubrication levels.',
-        status: 'ACTIVE',
-      });
-    }
-
-    if (Math.abs(sensors.tracking) > 7.0 && !hasActiveAlert('Critical Belt Misalignment')) {
+    if ((sensors.alignment === 'MISALIGNED' || Math.abs(sensors.tracking) > 7.0) && !hasActiveAlert('Critical Belt Misalignment')) {
       newAlertsToAdd.push({
         id: `ALT-${Math.floor(2000 + Math.random() * 8000)}`,
         severity: 'CRITICAL',
         title: 'Critical Belt Misalignment',
-        equipment: 'Return Belt Alignment Set #14',
-        sensor: 'Optical Alignment Sensor (Laser Transducer)',
+        equipment: 'Belt Edge Line',
+        sensor: 'HW-201 Reflective IR Edge Sensor',
         currentValue: `${sensors.tracking > 0 ? '+' : ''}${sensors.tracking} mm`,
         normalRange: '< 4.0 mm',
         threshold: '7.0 mm',
         timestamp: timestampStr,
-        description: 'Belt offset moved outside safety guide limit. Risk of belt edge structural tearing.',
-        recommendedAction: 'Inspect tracking rollers and correct belt position immediately.',
+        description: 'Belt edge drift detected outside normal flight path. Tearing risk.',
+        recommendedAction: 'Inspect tracking idlers and realign conveyor belt edge.',
         status: 'ACTIVE',
       });
     }
 
-    if (sensors.load > 115 && !hasActiveAlert('Motor Surge Overload')) {
+    if (sensors.rpm < 40 && !hasActiveAlert('Pulley Speed Drop')) {
       newAlertsToAdd.push({
         id: `ALT-${Math.floor(2000 + Math.random() * 8000)}`,
-        severity: 'CRITICAL',
-        title: 'Motor Surge Overload',
-        equipment: 'Primary Drive Motor M-01',
-        sensor: 'Load Cell + HX711 Amplifier',
-        currentValue: `${sensors.load} %`,
-        normalRange: '< 90 %',
-        threshold: '115 %',
+        severity: 'WARNING',
+        title: 'Pulley Speed Drop',
+        equipment: 'Drive Pulley Shaft',
+        sensor: 'HW-201 IR Pulley Encoder',
+        currentValue: `${sensors.rpm} RPM`,
+        normalRange: '> 45 RPM (Max 60 RPM)',
+        threshold: '40 RPM',
         timestamp: timestampStr,
-        description: 'Motor payload current surged above 115% rated capacity.',
-        recommendedAction: 'Clear feeder chute blockage and regulate ore tonnage input.',
+        description: 'Pulley shaft rotational speed dropped below expected operational range.',
+        recommendedAction: 'Check drive motor power supply and belt friction slip.',
         status: 'ACTIVE',
       });
     }
@@ -372,9 +328,8 @@ export const ConveyorProvider = ({ children }) => {
     updatedAlerts = updatedAlerts.map(a => {
       if (a.status === 'ACTIVE') {
         if (a.title.includes('Vibration') && sensors.vibration <= 3.0) return { ...a, status: 'RESOLVED' };
-        if (a.title.includes('Temperature') && sensors.temperature <= 60) return { ...a, status: 'RESOLVED' };
-        if (a.title.includes('Misalignment') && Math.abs(sensors.tracking) <= 4.0) return { ...a, status: 'RESOLVED' };
-        if (a.title.includes('Overload') && sensors.load <= 90) return { ...a, status: 'RESOLVED' };
+        if (a.title.includes('Misalignment') && Math.abs(sensors.tracking) <= 4.0 && sensors.alignment === 'OK') return { ...a, status: 'RESOLVED' };
+        if (a.title.includes('Speed') && sensors.rpm >= 45) return { ...a, status: 'RESOLVED' };
       }
       return a;
     });
@@ -384,7 +339,7 @@ export const ConveyorProvider = ({ children }) => {
     } else {
       setAlerts(updatedAlerts);
     }
-  }, [sensors.vibration, sensors.temperature, sensors.tracking, sensors.load]);
+  }, [sensors.vibration, sensors.tracking, sensors.alignment, sensors.rpm]);
 
   // REAL-TIME DUAL-MODE SENSOR STREAMING LOOP
   useEffect(() => {
@@ -399,15 +354,21 @@ export const ConveyorProvider = ({ children }) => {
           if (res.ok) {
             const data = await res.json();
             if (data.sensors) {
+              const newVib = data.sensors.vibration || 1.8;
+              const newRpm = data.sensors.rpm || 50;
+              const newSpeed = data.sensors.speed || Number((newRpm * 0.0314).toFixed(2));
+              const newTrack = data.sensors.tracking || 1.2;
+              const newAlign = data.sensors.alignment || (newTrack > 5 ? 'MISALIGNED' : 'OK');
+
               setSensors((prev) => ({
                 ...prev,
-                vibration: data.sensors.vibration || prev.vibration,
-                temperature: data.sensors.temperature || prev.temperature,
-                rpm: data.sensors.rpm || prev.rpm || 1450,
-                current: data.sensors.current || prev.current || 3.8,
-                load: data.sensors.load || prev.load,
-                tracking: data.sensors.tracking || prev.tracking,
-                tension: data.sensors.tension || prev.tension,
+                vibration: newVib,
+                rpm: newRpm,
+                speed: newSpeed,
+                tracking: newTrack,
+                alignment: newAlign,
+                sensorsOnline: 3,
+                totalSensors: 3,
               }));
               setDeviceStatus(data.livenessStatus || 'ONLINE');
               setLastSeenSecondsAgo(data.lastSeenSecondsAgo || 0);
@@ -417,14 +378,11 @@ export const ConveyorProvider = ({ children }) => {
                 ...prevHist.slice(1),
                 {
                   time: timeLabel,
-                  vibration: data.sensors.vibration,
-                  temperature: data.sensors.temperature,
-                  tracking: Math.abs(data.sensors.tracking || 1.2),
-                  acoustic: data.sensors.acoustic || 61,
-                  load: data.sensors.load || 82,
-                  tension: data.sensors.tension || 142,
-                  rpm: data.sensors.rpm || 1450,
-                  current: data.sensors.current || 3.8,
+                  vibration: newVib,
+                  speed: newSpeed,
+                  rpm: newRpm,
+                  tracking: Math.abs(newTrack),
+                  alignment: newAlign,
                   healthScore: data.prediction?.healthScore || 94,
                 }
               ]);
@@ -446,61 +404,42 @@ export const ConveyorProvider = ({ children }) => {
       intervalId = setInterval(() => {
         setSensors((prev) => {
           let newVib = prev.vibration;
-          let newTemp = prev.temperature;
           let newTrack = prev.tracking;
-          let newAc = prev.acoustic;
-          let newLoad = prev.load;
-          let newTens = prev.tension;
-          let newRpm = prev.rpm || 1450;
-          let newCurrent = prev.current || 3.8;
+          let newRpm = prev.rpm || 50;
+          let newAlign = 'OK';
 
           if (activeAnomaly === 'JOINT_RUPTURE') {
             newVib = Number((5.8 + Math.random() * 1.2).toFixed(1));
-            newTemp = Math.round(68 + Math.random() * 6);
             newTrack = Number((6.5 + Math.random() * 2.0).toFixed(1));
-            newAc = Math.round(88 + Math.random() * 8);
-            newTens = Math.round(195 + Math.random() * 15);
-            newRpm = 1320;
-            newCurrent = 4.8;
+            newRpm = 35;
+            newAlign = 'MISALIGNED';
           } else if (activeAnomaly === 'MISALIGNMENT_SPIKE') {
             newTrack = Number((8.2 + Math.random() * 2.5).toFixed(1));
             newVib = Number((3.9 + Math.random() * 0.8).toFixed(1));
-            newTemp = Math.round(59 + Math.random() * 5);
-            newAc = Math.round(76 + Math.random() * 5);
-            newRpm = 1410;
-            newCurrent = 4.1;
+            newRpm = 45;
+            newAlign = 'MISALIGNED';
           } else if (activeAnomaly === 'MOTOR_OVERHEAT') {
-            newTemp = Math.round(84 + Math.random() * 7);
-            newVib = Number((3.4 + Math.random() * 0.6).toFixed(1));
-            newAc = Math.round(79 + Math.random() * 4);
-            newRpm = 1280;
-            newCurrent = 5.2;
-          } else if (activeAnomaly === 'HEAVY_OVERLOAD') {
-            newLoad = Math.round(125 + Math.random() * 10);
-            newTens = Math.round(178 + Math.random() * 12);
-            newVib = Number((3.6 + Math.random() * 0.7).toFixed(1));
-            newCurrent = 5.1;
+            newVib = Number((4.5 + Math.random() * 0.6).toFixed(1));
+            newRpm = 30;
+            newAlign = 'OK';
           } else {
-            newVib = Number((1.6 + Math.random() * 0.5).toFixed(1));
-            newTemp = Math.round(41 + Math.random() * 4);
-            newTrack = Number((0.6 + Math.random() * 1.2 - 0.6).toFixed(1));
-            newAc = Math.round(59 + Math.random() * 5);
-            newLoad = Math.round(80 + Math.random() * 6);
-            newTens = Math.round(140 + Math.random() * 6);
-            newRpm = 1450;
-            newCurrent = 3.8;
+            newVib = Number((1.6 + Math.random() * 0.4).toFixed(1));
+            newTrack = Number((0.8 + Math.random() * 0.8).toFixed(1));
+            newRpm = Math.round(48 + Math.random() * 4);
+            newAlign = 'OK';
           }
+
+          const newSpeed = Number((newRpm * 0.0314).toFixed(2));
 
           const updated = {
             ...prev,
             vibration: newVib,
-            temperature: newTemp,
-            tracking: newTrack,
-            acoustic: newAc,
-            load: newLoad,
-            tension: newTens,
             rpm: newRpm,
-            current: newCurrent,
+            speed: newSpeed,
+            tracking: newTrack,
+            alignment: newAlign,
+            sensorsOnline: 3,
+            totalSensors: 3,
           };
 
           const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -509,14 +448,11 @@ export const ConveyorProvider = ({ children }) => {
             {
               time: timeLabel,
               vibration: newVib,
-              temperature: newTemp,
-              tracking: Math.abs(newTrack),
-              acoustic: newAc,
-              load: newLoad,
-              tension: newTens,
+              speed: newSpeed,
               rpm: newRpm,
-              current: newCurrent,
-              healthScore: Math.max(15, 96 - (newVib > 4 ? 30 : 0) - (newTemp > 70 ? 25 : 0) - (Math.abs(newTrack) > 5 ? 25 : 0)),
+              tracking: Math.abs(newTrack),
+              alignment: newAlign,
+              healthScore: Math.max(15, 96 - (newVib > 4 ? 30 : 0) - (Math.abs(newTrack) > 5 ? 30 : 0) - (newRpm < 40 ? 15 : 0)),
             }
           ]);
 
@@ -581,42 +517,42 @@ export const ConveyorProvider = ({ children }) => {
 
   const predictiveRecommendations = useMemo(() => {
     const recs = [];
-    if (sensors.vibration > 3.0 || sensors.temperature > 55) {
+    if (sensors.vibration > 3.0) {
       recs.push({
         id: 'PRED-101',
-        title: 'Bearing Inspection & Lubrication Recommended',
-        reason: `Vibration is currently ${sensors.vibration} mm/s and bearing temperature is ${sensors.temperature} °C. Trend shows gradual heat buildup.`,
+        title: 'Vibration & Bearing Inspection Recommended',
+        reason: `Vibration is currently ${sensors.vibration} mm/s. Tri-axial MPU6050 telemetry shows elevated dynamic amplitude.`,
         equipment: 'Drive Motor Bearing M-01',
         priority: sensors.vibration > 5.0 ? 'High' : 'Medium',
-        recommendedAction: 'Inspect bearing race condition, check synthetic grease viscosity, and measure acoustic noise.',
+        recommendedAction: 'Inspect bearing race condition, structural mounting bolts, and joint splice.',
         urgency: 'Within 48 hours',
-        relatedSensor: 'MPU6050 & DS18B20',
+        relatedSensor: 'MPU6050 Vibration Transducer',
       });
     }
 
-    if (Math.abs(sensors.tracking) > 3.5) {
+    if (Math.abs(sensors.tracking) > 3.5 || sensors.alignment === 'MISALIGNED') {
       recs.push({
         id: 'PRED-102',
-        title: 'Self-Aligning Idler Realignment Required',
+        title: 'Belt Edge Realignment Required',
         reason: `Belt tracking misalignment offset is ${sensors.tracking > 0 ? '+' : ''}${sensors.tracking} mm from center line.`,
-        equipment: 'Return Belt Alignment Frame #14',
+        equipment: 'Return Belt Alignment Zone',
         priority: Math.abs(sensors.tracking) > 6.0 ? 'High' : 'Medium',
         recommendedAction: 'Inspect self-aligning idler pivots and clean material buildup on return idlers.',
         urgency: 'Within 24 hours',
-        relatedSensor: 'Optical Laser Alignment Sensor',
+        relatedSensor: 'HW-201 Reflective IR Edge Sensor',
       });
     }
 
-    if (sensors.load > 88) {
+    if (sensors.rpm < 42) {
       recs.push({
         id: 'PRED-103',
-        title: 'Chute Feeder Rate Optimization',
-        reason: `Motor load is operating at ${sensors.load}% capacity with elevated tension strain.`,
-        equipment: 'Primary Loading Hopper Chute',
+        title: 'Pulley Speed Calibration & Tension Check',
+        reason: `Pulley shaft encoder reading dropped to ${sensors.rpm} RPM (max motor rating 60 RPM).`,
+        equipment: 'Drive Pulley Shaft',
         priority: 'Medium',
-        recommendedAction: 'Regulate ore feed gate and check belt tensioner take-up weights.',
+        recommendedAction: 'Verify drive motor power input, check pulley belt slip and take-up tension.',
         urgency: 'Within 72 hours',
-        relatedSensor: 'Load Cell + HX711 Transducer',
+        relatedSensor: 'HW-201 IR Pulley Encoder',
       });
     }
 
