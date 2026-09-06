@@ -2,8 +2,8 @@ import * as BABYLON from '@babylonjs/core';
 
 /**
  * Iron Ore System
- * Generates dynamic 3D iron ore rocks resting flush directly on top of the black rubber belt deck.
- * Discharge point is positioned AFTER the end roller drum (X = -7.1) so ore falls down cleanly into discharge chute.
+ * Generates a dense, consistent dynamic stream of 3D iron ore rocks resting flush on top of the carrying belt deck.
+ * Features realistic hematite/magnetite mineral colors and smooth discharge physics at the head/tail pulley.
  */
 export class IronOreSystem {
   constructor(scene, options = {}) {
@@ -15,9 +15,9 @@ export class IronOreSystem {
     this.dischargeX = -7.1;
     // Load zone is near head end (X = +6.0)
     this.loadZoneX = 6.0;
-    // Belt top deck surface is at y = 1.26; 1.38 places rocks flush on top of top rubber belt deck
-    this.beltSurfaceY = 1.38;
-    this.maxRocks = 120;
+    // Top carrying rubber belt deck surface is at Y = 1.26
+    this.beltSurfaceBaseY = 1.26;
+    this.maxRocks = 130;
 
     this.rocks = [];
     this.createOreMaterials();
@@ -26,42 +26,58 @@ export class IronOreSystem {
   }
 
   createOreMaterials() {
-    this.oreMat = new BABYLON.StandardMaterial("oreMat", this.scene);
-    this.oreMat.diffuseColor = new BABYLON.Color3(0.78, 0.35, 0.18); // Bright Hematite Iron Ore Rust Red / Copper-Brown
-    this.oreMat.specularColor = new BABYLON.Color3(0.4, 0.3, 0.2);
-    this.oreMat.emissiveColor = new BABYLON.Color3(0.18, 0.08, 0.04); // Self-illumination for high visibility against dark belt
-    this.oreMat.roughness = 0.75;
+    this.oreMaterials = [];
+
+    // Authentic Industrial Iron Ore Palette (Hematite, Magnetite, Raw Taconite)
+    const oreColors = [
+      { diffuse: new BABYLON.Color3(0.35, 0.18, 0.15), spec: new BABYLON.Color3(0.20, 0.18, 0.18) }, // Dark Hematite Iron
+      { diffuse: new BABYLON.Color3(0.28, 0.22, 0.20), spec: new BABYLON.Color3(0.25, 0.25, 0.25) }, // Dark Magnetite Grey-Brown
+      { diffuse: new BABYLON.Color3(0.42, 0.20, 0.16), spec: new BABYLON.Color3(0.18, 0.15, 0.14) }, // Rich Earthy Iron Ore
+      { diffuse: new BABYLON.Color3(0.32, 0.16, 0.13), spec: new BABYLON.Color3(0.15, 0.12, 0.12) }  // Deep Raw Taconite Ore
+    ];
+
+    oreColors.forEach((c, idx) => {
+      const mat = new BABYLON.StandardMaterial(`oreMat_${idx}`, this.scene);
+      mat.diffuseColor = c.diffuse;
+      mat.specularColor = c.spec;
+      mat.roughness = 0.85;
+      this.oreMaterials.push(mat);
+    });
   }
 
   createOreBaseMeshes() {
     this.rockPrototypes = [];
 
+    // Create 4 distinct realistic iron ore rock prototypes (size 0.18m to 0.30m)
     for (let i = 0; i < 4; i++) {
+      const size = 0.18 + (i % 3) * 0.06;
       const proto = BABYLON.MeshBuilder.CreatePolyhedron(`oreProto_${i}`, {
         type: i % 4,
-        size: 0.32 + (i % 3) * 0.08
+        size: size
       }, this.scene);
-      proto.material = this.oreMat;
+      proto.material = this.oreMaterials[i % this.oreMaterials.length];
       proto.isVisible = false;
       if (this.shadowGenerator) {
         this.shadowGenerator.addShadowCaster(proto);
       }
-      this.rockPrototypes.push(proto);
+      this.rockPrototypes.push({ mesh: proto, size: size });
     }
   }
 
   initRockPool() {
     for (let i = 0; i < this.maxRocks; i++) {
-      const protoIndex = i % 4;
-      const instance = this.rockPrototypes[protoIndex].createInstance(`oreInstance_${i}`);
+      const protoObj = this.rockPrototypes[i % this.rockPrototypes.length];
+      const instance = protoObj.mesh.createInstance(`oreInstance_${i}`);
+      const size = protoObj.size;
 
-      // Pre-seed initial 40 rocks along the conveyor belt surface (-6.8m to +6.0m)
-      const isInitialActive = i < 40;
-      const initialX = isInitialActive ? -6.8 + (i / 40) * 12.8 : this.loadZoneX;
-      const initialZ = isInitialActive ? (Math.random() - 0.5) * 0.7 : 0;
+      // Pre-seed 70 active rocks evenly across carrying belt flight (-6.8m to +6.0m) for dense consistent stream
+      const isInitialActive = i < 70;
+      const initialX = isInitialActive ? -6.8 + (i / 70) * 12.8 : this.loadZoneX;
+      const initialZ = isInitialActive ? (Math.random() - 0.5) * 0.85 : 0;
+      const initialY = this.beltSurfaceBaseY + (size / 2);
 
       instance.isVisible = isInitialActive;
-      instance.position.set(initialX, this.beltSurfaceY, initialZ);
+      instance.position.set(initialX, initialY, initialZ);
       instance.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
       if (this.shadowGenerator) {
@@ -71,16 +87,17 @@ export class IronOreSystem {
       this.rocks.push({
         mesh: instance,
         active: isInitialActive,
+        size: size,
         x: initialX,
-        y: this.beltSurfaceY,
+        y: initialY,
         z: initialZ,
         vx: 0,
         vy: 0,
         vz: 0,
         rotSpeed: new BABYLON.Vector3(
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2
+          (Math.random() - 0.5) * 1.5,
+          (Math.random() - 0.5) * 1.5,
+          (Math.random() - 0.5) * 1.5
         ),
         falling: false
       });
@@ -96,9 +113,9 @@ export class IronOreSystem {
     inactive.active = true;
     inactive.mesh.isVisible = true;
     inactive.falling = false;
-    inactive.x = this.loadZoneX + (Math.random() - 0.5) * 0.4;
-    inactive.y = this.beltSurfaceY;
-    inactive.z = (Math.random() - 0.5) * 0.7;
+    inactive.x = this.loadZoneX + (Math.random() - 0.5) * 0.5;
+    inactive.z = (Math.random() - 0.5) * 0.85;
+    inactive.y = this.beltSurfaceBaseY + (inactive.size / 2);
 
     inactive.vx = -speed * 0.5;
     inactive.vy = 0;
@@ -115,12 +132,12 @@ export class IronOreSystem {
     const activeSpeed = (typeof speed === 'number' && !isNaN(speed) && speed > 0) ? speed : 3.8;
     const activeLoad = (typeof loadPercent === 'number' && !isNaN(loadPercent) && loadPercent > 0) ? loadPercent : 82.0;
 
-    const spawnInterval = Math.max(0.04, 0.4 - (activeLoad / 100) * 0.35);
+    const spawnInterval = Math.max(0.03, 0.22 - (activeLoad / 100) * 0.17);
     this.spawnTimer += dt;
 
     if (this.spawnTimer >= spawnInterval) {
       this.spawnTimer = 0;
-      const count = Math.ceil((activeLoad / 100) * 2);
+      const count = Math.ceil((activeLoad / 100) * 2.5);
       for (let c = 0; c < count; c++) {
         this.spawnRock(activeSpeed);
       }
@@ -133,18 +150,19 @@ export class IronOreSystem {
       if (!r.active) continue;
 
       currentActive++;
-      if (currentActive > targetActiveCount + 15 && !r.falling) {
+      if (currentActive > targetActiveCount + 20 && !r.falling) {
         r.active = false;
         r.mesh.isVisible = false;
         continue;
       }
 
       if (!r.falling) {
-        // Move ore along top surface of belt from right to left (towards -X)
+        // Move ore continuously along carrying belt deck from right (+X) to left (-X)
         r.x -= activeSpeed * dt;
-        r.mesh.position.set(r.x, this.beltSurfaceY, r.z);
+        r.y = this.beltSurfaceBaseY + (r.size / 2);
+        r.mesh.position.set(r.x, r.y, r.z);
 
-        // Discharge ONLY AFTER reaching past the end roller drum (X <= -7.1)
+        // Discharge ONLY AFTER reaching past the tail roller drum (X <= -7.1)
         if (r.x <= this.dischargeX) {
           r.falling = true;
           r.vx = -activeSpeed * 0.4;
@@ -168,4 +186,5 @@ export class IronOreSystem {
     }
   }
 }
+
 
