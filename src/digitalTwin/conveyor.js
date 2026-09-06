@@ -126,7 +126,7 @@ export class ConveyorDigitalTwin {
     this.belt = new ConveyorBelt(this.scene, { length: 14, width: 1.4, height: 0.7 });
     this.rollers = new ConveyorRollers(this.scene, { length: 14, height: 0.7 });
     this.motor = new DriveMotor(this.scene, { headX: 7, height: 0.7 });
-    this.oreSystem = new IronOreSystem(this.scene, { headX: 7, tailX: -7 });
+    this.oreSystem = new IronOreSystem(this.scene, { headX: 7, tailX: -7, shadowGenerator: this.shadowGenerator });
     this.sensors = new ConveyorSensors(this.scene, { headX: 7, tailX: -7, height: 0.7 });
   }
 
