@@ -48,14 +48,24 @@ export class IronOreSystem {
     for (let i = 0; i < this.maxRocks; i++) {
       const protoIndex = i % 3;
       const instance = this.rockPrototypes[protoIndex].createInstance(`oreInstance_${i}`);
-      instance.isVisible = false;
+
+      // Pre-seed initial 35 rocks along the conveyor belt surface so ore is immediately visible on startup
+      const isInitialActive = i < 35;
+      const initialX = isInitialActive ? -6.8 + (i / 35) * 12.8 : this.loadZoneX;
+      const initialZ = isInitialActive ? (Math.random() - 0.5) * 0.7 : 0;
+
+      instance.isVisible = isInitialActive;
+      if (isInitialActive) {
+        instance.position.set(initialX, this.beltSurfaceY, initialZ);
+        instance.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      }
 
       this.rocks.push({
         mesh: instance,
-        active: false,
-        x: this.loadZoneX,
+        active: isInitialActive,
+        x: initialX,
         y: this.beltSurfaceY,
-        z: 0,
+        z: initialZ,
         vx: 0,
         vy: 0,
         vz: 0,

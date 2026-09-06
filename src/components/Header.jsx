@@ -69,23 +69,34 @@ export const Header = ({ activeTab, setActiveTab }) => {
 
         {/* Right Top Controls */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-[#263238]">
+          
+          {/* Data Source Selector Switcher */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-[#B4BEC2] shadow-2xs font-mono">
+            <button
+              onClick={() => setDataSourceMode('DEMO')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                dataSourceMode === 'DEMO'
+                  ? 'bg-[#D97706] text-white font-extrabold shadow-2xs'
+                  : 'text-[#56656B] hover:text-[#263238]'
+              }`}
+              title="Simulated demo data loop (No hardware required)"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Simulated Values</span>
+            </button>
 
-          {/* Small ESP32 Hardware Status Info Button */}
-          <div 
-            onClick={() => setIsConnectModalOpen(true)}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl border font-mono shadow-2xs text-xs font-bold cursor-pointer transition-all ${
-              deviceStatus === 'ONLINE'
-                ? 'bg-[#2E9D59]/10 border-[#2E9D59]/30 text-[#2E9D59] hover:bg-[#2E9D59]/20'
-                : deviceStatus === 'NO_RECENT_DATA'
-                ? 'bg-[#D97706]/10 border-[#D97706]/30 text-[#D97706] hover:bg-[#D97706]/20'
-                : 'bg-[#C6534F]/10 border-[#C6534F]/30 text-[#C6534F] hover:bg-[#C6534F]/20'
-            }`} 
-            title="Click for ESP32 Connection Details"
-          >
-            <span className={`w-2 h-2 rounded-full ${
-              deviceStatus === 'ONLINE' ? 'bg-[#2E9D59] animate-pulse' : deviceStatus === 'NO_RECENT_DATA' ? 'bg-[#D97706]' : 'bg-[#C6534F]'
-            }`}></span>
-            <span>{deviceStatus === 'ONLINE' ? 'ESP32 Online' : deviceStatus === 'NO_RECENT_DATA' ? 'No Recent Data' : 'ESP32 Offline'}</span>
+            <button
+              onClick={() => setDataSourceMode('LIVE_ESP32')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                dataSourceMode === 'LIVE_ESP32'
+                  ? 'bg-[#2E9D59] text-white font-extrabold shadow-2xs'
+                  : 'text-[#56656B] hover:text-[#263238]'
+              }`}
+              title="Live physical ESP32 sensor telemetry"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Live ESP32</span>
+            </button>
           </div>
 
           {/* Live Clock & Date */}

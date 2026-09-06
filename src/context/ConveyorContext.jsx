@@ -6,12 +6,12 @@ export const ConveyorProvider = ({ children }) => {
   // Active Anomaly State: null | 'JOINT_RUPTURE' | 'MISALIGNMENT_SPIKE' | 'MOTOR_OVERHEAT' | 'HEAVY_OVERLOAD'
   const [activeAnomaly, setActiveAnomaly] = useState(null);
 
-  // DATA SOURCE MODE: 'LIVE_ESP32' (real ESP32 IoT API)
-  const [dataSourceMode, setDataSourceMode] = useState('LIVE_ESP32');
+  // DATA SOURCE MODE: 'DEMO' (default simulated stream) | 'LIVE_ESP32' (real ESP32 IoT API)
+  const [dataSourceMode, setDataSourceMode] = useState('DEMO');
   const [activeDeviceId, setActiveDeviceId] = useState('ESP32_A82F91');
   const [activeBeltId, setActiveBeltId] = useState('BELT_001');
-  const [sensorSource, setSensorSource] = useState('esp32');
-  const [deviceStatus, setDeviceStatus] = useState('ONLINE');
+  const [sensorSource, setSensorSource] = useState('simulation'); // 'simulation' | 'esp32'
+  const [deviceStatus, setDeviceStatus] = useState('DEMO_MODE');   // 'DEMO_MODE' | 'ONLINE' | 'NO_RECENT_DATA' | 'OFFLINE'
   const [lastSeenSecondsAgo, setLastSeenSecondsAgo] = useState(0);
 
   // Conveyor System Metadata
@@ -36,6 +36,7 @@ export const ConveyorProvider = ({ children }) => {
     rpm: 50,             // RPM (HW-201 IR Pulley Encoder - Max motor speed: 60 RPM)
     tracking: 1.2,       // mm offset (HW-201 IR Alignment Detector)
     alignment: 'OK',     // 'OK' | 'MISALIGNED'
+    load: 82,            // % (Ore payload load level)
     sensorsOnline: 3,
     totalSensors: 3,
   });

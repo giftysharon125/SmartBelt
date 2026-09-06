@@ -11,6 +11,7 @@ class ConveyorState {
       vibration: 1.8,       // mm/s (MPU6050 Accel/Gyro)
       alignment: 1.2,       // mm offset / tracking (HW-201 IR Sensor)
       motor_rpm: 50,        // RPM (HW-201 IR Encoder - Max motor speed: 60 RPM)
+      load: 82.0,           // % (Ore payload load level)
       running: true,        // boolean
       activeAnomaly: null,  // null | 'JOINT_RUPTURE' | 'MISALIGNMENT_SPIKE' | 'MOTOR_OVERHEAT'
       minimalMode: false    // boolean for dashboard embed view
