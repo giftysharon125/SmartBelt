@@ -137,7 +137,7 @@ export const TeamPage = () => {
       imgBg: 'bg-[#FBFBF3]',
       isDark: false,
       icon: Code,
-      image: '/team-box6.png',
+      image: '/team-box6-v2.png',
       title: 'Frontend & Backend Engineer',
       area: 'Full-Stack Platform & System Integration',
       hasFlip: true,
