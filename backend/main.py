@@ -527,9 +527,27 @@ start_serial_bridge()
 
 # Dynamic Value Generator (REAL ESP8266 SENSOR DATA with DEMO Fallback)
 def get_live_sensors():
-    global active_anomaly, latest_serial_data, latest_serial_time
+    global active_anomaly, latest_serial_data, latest_serial_time, sensor_readings_db
     
-    # Priority 1: Use REAL ESP8266 Serial Sensor Readings if received in last 5 seconds
+    # Priority 1A: Use REAL ESP32 Wi-Fi HTTP POST Data if received recently
+    if sensor_readings_db:
+        latest_http = sensor_readings_db[-1]
+        if time.time() - latest_http.get("timestamp", 0) < 10.0:
+            data = dict(latest_http.get("sensors", {}))
+            data["source"] = "esp32_wifi"
+            data["sensorsOnline"] = 3
+            data["totalSensors"] = 3
+            if active_anomaly == 'JOINT_RUPTURE':
+                data.setdefault("vibration", 0)
+                data["vibration"] = max(data["vibration"], 6.2)
+            elif active_anomaly == 'MISALIGNMENT_SPIKE':
+                data["tracking"] = 8.5
+            elif active_anomaly == 'MOTOR_OVERHEAT':
+                data.setdefault("temperature", 25.0)
+                data["temperature"] = 85.0
+            return data
+
+    # Priority 1B: Use REAL ESP8266 Serial Sensor Readings if received in last 5 seconds
     if latest_serial_data and (time.time() - latest_serial_time < 5.0):
         data = dict(latest_serial_data)
         # Apply anomaly simulation overlay if user triggers test buttons in UI
